@@ -1,0 +1,21 @@
+# @package _global_
+
+hydra:
+  run:
+    # Output directory for normal run
+#    dir: ./outputs/${now:%Y-%m-%d_%H-%M-%S}
+    dir: .
+
+job:
+  data:
+    lacy: 1
+
+file:
+
+
+
+
+
+
+
+
