@@ -8,14 +8,13 @@ __version__ = f'Version 2.0  \nTime-stamp: <2022-08-19>'
 __author__ = "ChaoTANG@univ-reunion.fr"
 
 import sys
-import glob
 import hydra
-import subprocess
-import numpy as np
-import pandas as pd
-import xarray as xr
-from importlib import reload
-import matplotlib.pyplot as plt
+# import subprocess
+# import numpy as np
+# import pandas as pd
+# import xarray as xr
+# from importlib import reload
+# import matplotlib.pyplot as plt
 from omegaconf import DictConfig
 
 import GEO_PLOT
@@ -27,9 +26,8 @@ import PUBLISH
 def cloud(cfg: DictConfig) -> None:
     """
     """
-    if any(GEO_PLOT.get_values_multilevel_dict(dict(cfg.job.moufia))):
+    if any(GEO_PLOT.get_values_multilevel_dict(dict(cfg.job.data))):
         print('start to work...')
-
 
 
 if __name__ == "__main__":
