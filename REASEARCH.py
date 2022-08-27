@@ -18,117 +18,52 @@ import pandas as pd
 import GEO_PLOT
 
 
-def test_plot_reu_grid(da):
-    # plot reu grid:
-    lat = da.lat.values
-    lon = da.lon.values
+def compare_curves(df: pd.DataFrame, output_tag: str = None):
+    var = df.columns.to_list()
+    fig, ax = plt.subplots(1, figsize=(20, 5), dpi=300)
+    x = range(len(df))
+    x_ticks = x[::12 * 12]
+    x_ticks_label = df.index.strftime("%Y-%m-%d %HH")[::12 * 12]
+    for i in range(len(var)):
+        plt.plot(x, df[var[i]], label=var[i])
 
-    for i in range(lat.shape[0]):
-        for j in range(lat.shape[1]):
-            plt.plot(lon[i, j], lat[i, j], marker='o', markersize=1)
-            print(lon[i, j], lat[i, j])
+    ax.set_xticks(x_ticks, minor=False)
+    ax.set_xticklabels(x_ticks_label, minor=False)
+    plt.xticks(rotation=15)
+    plt.title(f'6AM to 6PM')
+    plt.legend()
+    plt.savefig(f'./plot/valid.1.{output_tag:s}.png', dpi=300)
+    plt.show()
 
-    min_lat_dif = lat[0, 0] - lat[1, 0]
-    max_lat_dif = lat[-1, -1] - lat[-2, -1]
 
-    min_lon_dif = lon[0, 0] - lon[0, 1]
-    max_lon_dif = lon[-1, -1] - lon[-1, -2]
+def plot_corr(df: pd.DataFrame):
+    cor = df.corr(method='pearson')
 
-    print(f'min grid lat: {min_lon_dif: 4.4f}, {min_lat_dif:4.4f}\n'
-          f'max grid lat: {max_lon_dif: 4.4f}, {max_lat_dif:4.4f}')
+    # plot:
+    fig = plt.figure(figsize=(10, 10), dpi=300)
+    ax = plt.subplot()
+    GEO_PLOT.plot_color_matrix(df=cor, cmap=plt.cm.get_cmap('PiYG').reversed(), plot_number=True, ax=ax,
+                               vmin=-1, vmax=1,
+                               cbar_label='jj')
+    plt.savefig(f'./plot/valid.2.cross_corr.png', dpi=300)
+    plt.show()
 
-    plt.title(f'lon and lat in Reunion S_NWC')
 
+def check_normal(df: pd.DataFrame, output_tag: str = None):
+
+    fig = plt.figure(figsize=(10, 6))
+
+    ax1 = fig.add_subplot(2, 1, 1)
+    ax1.scatter(range(df.size), df.values)
     plt.grid()
 
+    ax2 = fig.add_subplot(2, 1, 2)
+    df.hist(bins=10, alpha=0.5, ax=ax2)
+    df.plot(kind='kde', secondary_y=True, ax=ax2)
+    plt.grid(zorder=-1)
+
+    plt.savefig(f'./plot/check_normal.png', dpi=300)
     plt.show()
 
-
-def annual_cycle_cloudiness(df: pd.DataFrame, year: str = '2019'):
-    # total cloudiness with the high semi-transparent clouds, i.e., cirrus
-    tcl_cirrus = df.copy()
-    tcl_cirrus[tcl_cirrus > 1] = 999
-
-    # no cirrus:
-    tcl_0_cirrus = df.copy()
-    tcl_0_cirrus[tcl_0_cirrus > 10] = 1
-    tcl_0_cirrus[tcl_0_cirrus > 1] = 999
-
-    output = dict()
-    # annual:
-    fig = plt.figure(figsize=(12, 8), dpi=200)
-    for tcl, label in zip([tcl_cirrus, tcl_0_cirrus], ['total_cloudiness', 'total_cloudiness_without_cirrus']):
-        stack = tcl.groupby([tcl.index.get_level_values(0).month, 'ct']).size().unstack()
-        tcl_plot = stack.apply(lambda x: x * 100 / np.sum(x), axis=1)[[999]]
-        plt.plot(tcl_plot, label=label, linewidth=2, marker='o')
-        output[label] = tcl_plot
-
-    fontsize = 16
-    plt.legend(fontsize=fontsize)
-    plt.xlabel(f'month', fontsize=fontsize)
-    plt.ylabel(f'frequency', fontsize=fontsize)
-    plt.yticks(fontsize=fontsize)
-    plt.xticks(fontsize=fontsize)
-    plt.title(f'total cloudiness', fontsize=fontsize)
-    plt.grid()
-    plt.savefig(f'./plot/annual.total_cloudiness.moufia.{year:s}.png', dpi=300)
-    plt.show()
-
-    # diurnal:
-    fig = plt.figure(figsize=(12, 8), dpi=200)
-    for tcl, label in zip([tcl_cirrus, tcl_0_cirrus], ['total_cloudiness', 'total_cloudiness_without cirrus']):
-        stack = tcl.groupby([tcl.index.get_level_values(0).hour, 'ct']).size().unstack()
-        tcl_plot = stack.apply(lambda x: x * 100 / np.sum(x), axis=1)[[999]]
-        plt.plot(tcl_plot, label=label, linewidth=2, marker='o')
-
-    fontsize = 16
-    plt.legend(fontsize=fontsize)
-    plt.xlabel(f'Hour', fontsize=fontsize)
-    plt.ylabel(f'frequency', fontsize=fontsize)
-    plt.yticks(fontsize=fontsize)
-    plt.xticks(fontsize=fontsize)
-    plt.title(f'total cloudiness', fontsize=fontsize)
-    plt.grid()
-    plt.savefig(f'./plot/diurnal.total_cloudiness.moufia.{year:s}.png', dpi=300)
-    plt.show()
-
-    # return only annual cycle data
-    return output
-
-
-def plot_monthly_hourly_bar_unstack(df, output_tag='jjj', title='kkk', stack_full: bool = False):
-    stacked = df.groupby(
-        [df.index.get_level_values(0).month, 'ct']).size().unstack()
-
-    y_label = 'occurrence'
-
-    if stack_full:
-        stacked = stacked.apply(lambda x: x * 100 / np.sum(x), axis=1)
-        print(stacked)
-        y_label = f'frequency (%)'
-
-    stacked.plot(kind='bar', stacked=True, legend=True)
-
-    plt.xlabel('month (2019)')
-    plt.ylabel(y_label)
-    plt.xlim(-1, 14)
-    plt.title(title)
-    plt.savefig(f'./plot/monthly_{output_tag:s}.full_{stack_full:g}.png', dpi=300)
-
-    plt.show()
-
-    # hourly:
-    stacked = df.groupby([df.index.get_level_values(0).hour, 'ct']).size().unstack()
-
-    if stack_full:
-        stacked = stacked.apply(lambda x: x * 100 / np.sum(x), axis=1)
-        print(stacked)
-        y_label = f'frequency (%)'
-
-    stacked.plot(kind='bar', stacked=True, legend=True)
-    plt.xlabel('Hour (2019)')
-    plt.ylabel(y_label)
-    plt.xlim(-1, 30)
-    plt.title(title)
-    plt.savefig(f'./plot/hourly{output_tag:s}.full_{stack_full:g}.png', dpi=300)
-    plt.show()
+    from scipy import stats
+    print(stats.normaltest(df.values))

@@ -2487,13 +2487,17 @@ def plot_ttt_regimes(olr_regimes: pd.DataFrame, olr: xr.DataArray,
     print(f'got plot')
 
 
-def plot_color_matrix(df: pd.DataFrame, ax, cbar_label: str, plot_number: bool = False, cmap='Blues'):
+
+
+
+def plot_color_matrix(df: pd.DataFrame, ax, cbar_label: str, plot_number: bool = False,
+                      vmin = None, vmax = None,
+                      cmap=plt.cm.get_cmap('PiYG')):
     """
     plot matrix by df, where x is column, y is index,
+    :param cmap:
     :param plot_number:
     :type plot_number:
-    :param cbar_label:
-    :type cbar_label: str
     :param df:
     :type df:
     :param ax:
@@ -2524,32 +2528,58 @@ def plot_color_matrix(df: pd.DataFrame, ax, cbar_label: str, plot_number: bool =
     # ax.set_ylabel('year')
     # ax.set_xlabel('month')
 
-    vmin = int(df.values.min())
-    vmax = int(df.values.max())
+    if vmin == None:
+        vmin = int(df.values.min())
+        vmax = int(df.values.max())
 
-    # print(vmin, vmax)
+    print(vmin, vmax)
 
     if vmin + vmax < vmax:
-        c = ax.pcolor(df, cmap=plt.cm.get_cmap('coolwarm', df.max().max() + 1))
-        cbar_ticks = [x for x in range(vmin, vmax + 1, math.ceil((vmax - vmin) / 10))]
+        # c = ax.pcolor(df, cmap=plt.cm.get_cmap('coolwarm', df.max().max() + 1))
+        c = ax.pcolor(df, cmap=cmap)
+        cbar_ticks = value_cbar_ticks_from_vmax_vmin(vmax=vmax, vmin=vmin, num_bin=10)
     else:
-        cbar_ticks = [x for x in range(vmin, vmax, math.ceil((vmax - vmin) / 10))]
+        cbar_ticks = value_cbar_ticks_from_vmax_vmin(vmax=vmax, vmin=vmin, num_bin=10)
+        # cbar_ticks = [x for x in range(vmin, vmax, math.ceil((vmax - vmin) / 10))]
 
     if plot_number:
         for i in range(df.shape[1]):  # x direction
             for j in range(df.shape[0]):  # y direction
                 c = df.iloc[j, i]
                 # notice to the order of
-                ax.text(x_ticks[i], y_ticks[j], f'{c:2.0f}', va='center', ha='center')
+                ax.text(x_ticks[i], y_ticks[j], f'{c:2.1f}', va='center', ha='center')
         # put cbar label
         ax.yaxis.set_label_position("right")
     else:
         cb = plt.colorbar(c, ax=ax, label=cbar_label, ticks=cbar_ticks)
         loc = [x + 0.5 for x in cbar_ticks]
+        # loc = [x for x in cbar_ticks]
+
         cb.set_ticks(loc)
         cb.set_ticklabels(cbar_ticks)
 
     return ax
+
+
+def value_cbar_ticks_from_vmax_vmin(vmax, vmin, num_bin):
+    """ this is only an automatic cbar ticks """
+    import math
+
+    mi = math.floor(np.log10(vmax - vmin))
+    list_bin = np.array([x * 10 ** (mi - 1) for x in range(1, 10)])
+    interval = list_bin.flat[np.abs(list_bin - (vmax - vmin) / num_bin).argmin()]
+    cbar_ticks = np.round([x for x in np.arange(vmin, vmax * (1 + 1 / 10 / num_bin), interval)], np.abs(mi - 1))
+    print(cbar_ticks)
+
+
+    #
+    # from matplotlib.colors import TwoSlopeNorm
+    # if bias:
+    #     # to make uneven colorbar with zero in white
+    #     norm = TwoSlopeNorm(vmin=vmin, vcenter=0, vmax=vmax)
+    # else:
+    #     norm = TwoSlopeNorm(vmin=vmin, vcenter=(vmax - vmin) / 2 + vmin, vmax=vmax)
+    return cbar_ticks
 
 
 def find_symmetric_difference(list1, list2):

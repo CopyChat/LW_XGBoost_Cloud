@@ -14,7 +14,8 @@ import hydra
 # import pandas as pd
 # import xarray as xr
 # from importlib import reload
-# import matplotlib.pyplot as plt
+from importlib import reload
+import matplotlib.pyplot as plt
 from omegaconf import DictConfig
 
 import GEO_PLOT
@@ -26,6 +27,42 @@ import PUBLISH
 def cloud(cfg: DictConfig) -> None:
     """
     """
+    print('start to work ...')
+    # read
+    df_raw = GEO_PLOT.read_csv_into_df_with_header(cfg.file.result_mino)
+    # shift to local time
+    df_raw = GEO_PLOT.convert_df_shifttime(df_raw, 3600 * 4)
+    # select only 6AM to 6PM. (already done by Mino, just to confirm)
+    df_raw = df_raw.between_time('6:00', '18:00')
+
+    df_valid = df_raw[{'CF_XGB', 'CF_APACADA', 'CF_OBS'}]
+
+    # plot first week:
+    REASEARCH.compare_curves(df_valid['2021-01-04': '2021-01-10'], output_tag='raw')
+
+    # correlation:
+    REASEARCH.plot_corr(df_valid)
+    cor = df_valid.corr()
+    print(cor)
+
+    # smooth of CF_APACADA
+    from scipy.signal import savgol_filter
+
+    df_valid['CF_APACADA_smooth'] = savgol_filter(df_valid.CF_APACADA, window_length=15, polyorder=3)
+    df_valid[df_valid['CF_APACADA_smooth'] > 1] = 1
+
+    REASEARCH.compare_curves(df_valid['2021-01-04': '2021-01-07'], output_tag='smoothed')
+    cor = df_valid.corr()
+    print(cor)
+
+    # normality
+    REASEARCH.check_normal(df_valid[{'CF_APACADA'}], output_tag='check.normal')
+    REASEARCH.check_normal(df_valid[{'CF_OBS'}], output_tag='check.normal')
+    REASEARCH.check_normal(df_valid[{'CF_XGB'}], output_tag='check.normal')
+
+
+
+
     if any(GEO_PLOT.get_values_multilevel_dict(dict(cfg.job.data))):
         print('start to work...')
 
