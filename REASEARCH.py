@@ -49,7 +49,7 @@ def plot_corr(df: pd.DataFrame):
     plt.show()
 
 
-def check_normal(df: pd.DataFrame, output_tag: str = None):
+def check_normal(df: pd.DataFrame, output_tag: str = 'output_tag'):
 
     fig = plt.figure(figsize=(10, 6))
 
@@ -62,8 +62,31 @@ def check_normal(df: pd.DataFrame, output_tag: str = None):
     df.plot(kind='kde', secondary_y=True, ax=ax2)
     plt.grid(zorder=-1)
 
-    plt.savefig(f'./plot/check_normal.png', dpi=300)
+    plt.savefig(f'./plot/check_normal.{output_tag:s}.png', dpi=300)
     plt.show()
 
     from scipy import stats
     print(stats.normaltest(df.values))
+
+
+def add_ct_for_validation(df_valid, ct, output: str = None):
+
+    ct_nearest_list = []
+    dt_nearest_list = []
+    for i in range(len(df_valid)):
+        index = ct.index.get_loc(df_valid.index[i], method='nearest')
+        ct_nearest = ct.iloc[index]
+        print(i, ct_nearest.values)
+        ct_nearest_list.append(ct_nearest[0])
+        dt_nearest_list.append(ct.index[index])
+
+    df_valid.insert(0, 'ct', ct_nearest_list)
+    df_valid.insert(0, 'dt_saf_nwc', dt_nearest_list)
+    df_valid.insert(0, 'dt_delta', np.abs(df_valid.index - df_valid.dt_saf_nwc))
+    df_valid.insert(0, 'diff_minute', [x.seconds % 3600 // 60 for x in df_valid.dt_delta])
+
+    df_valid.to_pickle('./dataset/data_valid_ct')
+
+    return df_valid
+
+

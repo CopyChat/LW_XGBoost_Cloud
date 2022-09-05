@@ -9,8 +9,15 @@ hydra:
 job:
   data:
     lacy: 1
+  valid:
+    by_hour: 0
+    by_height: 1
+
 
 file:
+  result_mino: ./dataset/test_result_2022-01-03_2022-02-01.csv
+  ct_SAF_NWC_moufia: ./dataset/ct.S_NWC_CT_MSG1_globeI-VISIR_201706-202206.lonlat.moufia.yearly.local_time.reallocation.regroup
+  data_valid_ct: ./dataset/data_valid_ct
 
 
 
