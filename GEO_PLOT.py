@@ -35,6 +35,12 @@ from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 from statsmodels.stats.multitest import fdrcorrection as fdr_cor
 
 
+def ct_learn():
+
+    # add a new column to existing df:
+    print(f'good')
+
+
 def fig_add_headers(
         fig,  # input fig or GridSpec or GridSpecFromSubplotSpec
         *,
@@ -870,9 +876,10 @@ def check_nan_inf_da_df(df):
 
 
 def plot_violin_df_1D(df: pd.DataFrame, x: str, y: str, y_unit: str = '',
-                      x_label: str = 0, y_label: str = 0,
-                      hue: str = 0,
+                      x_label: str = 0, y_label: str = 0, inner='box', scale='area',
+                      hue: str = 0, split: bool = False, x_ticks_labels: list = None,
                       suptitle_add_word: str = '',
+                      add_number: bool = True
                       ):
     """
     plot violin plot
@@ -912,7 +919,7 @@ def plot_violin_df_1D(df: pd.DataFrame, x: str, y: str, y_unit: str = '',
 
     fig, ax = plt.subplots(figsize=(fig_width, 6), dpi=220)
     if hue:
-        ax = violinplot(x=x, y=y, hue=hue, data=df)
+        ax = violinplot(x=x, y=y, hue=hue, data=df, split=split, inner=inner, scale=scale)
     else:
         ax = violinplot(x=x, y=y, data=df)
 
@@ -920,6 +927,29 @@ def plot_violin_df_1D(df: pd.DataFrame, x: str, y: str, y_unit: str = '',
 
     plt.ylabel(f'{y:s} ({y_unit:s})')
     title = f'{y:s} in {x:s}'
+
+    if add_number:
+        std = df.groupby([x])[y].std().values
+        medians = df.groupby([x])[y].median().values
+
+        y_pos = medians - std * 1.3
+        nobs = df[x].value_counts().values
+        nobs = [str(x) for x in nobs.tolist()]
+        nobs = ["" + i for i in nobs]
+
+        print(nobs, ax.get_xticklabels())
+        # Add text to the figure
+        pos = range(len(nobs))
+        for tick, label in zip(pos, ax.get_xticklabels()):
+            ax.text(tick, y_pos[tick] * 1.5, nobs[tick],
+                    size='medium',
+                    color='b',
+                    weight='semibold',
+                    horizontalalignment='center',
+                    verticalalignment='center')
+
+    if x_ticks_labels is not None:
+        ax.set_xticklabels(x_ticks_labels)
 
     if suptitle_add_word is not None:
         title = title + ' ' + suptitle_add_word
