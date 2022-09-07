@@ -961,6 +961,18 @@ def plot_violin_df_1D(df: pd.DataFrame, x: str, y: str, y_unit: str = '',
     plt.show()
 
 
+def convert_cf_to_octas(array_1D: np.ndarray):
+
+    # intervals from Utrillas 2022 paper
+    intervals = np.array([0.00001, 18.75, 31.25, 43.75, 56.25, 68.75, 81.25, 100, 110]) / 100
+    # this is always increasing
+
+    octas = (array_1D.reshape(-1, 1) < intervals).argmax(axis=1)
+
+    return octas
+
+
+
 def daily_mean_da(da: xr.DataArray):
     """
     calculate daily mean

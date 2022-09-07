@@ -37,7 +37,7 @@ def cloud(cfg: DictConfig) -> None:
     # select only 6AM to 6PM. (already done by Mino, just to confirm)
     df_raw = df_raw.between_time('6:00', '18:00')
 
-    df_valid = df_raw[{'CF_XGB', 'CF_APACADA', 'CF_OBS'}]
+    df_valid = df_raw[{'CF_XGB', 'CF_APCADA', 'CF_OBS', 'PCA_APCADA'}]
 
     # plot first week:
     REASEARCH.compare_curves(df_valid['2021-01-04': '2021-01-10'], output_tag='raw')
@@ -47,39 +47,39 @@ def cloud(cfg: DictConfig) -> None:
     cor = df_valid.corr()
     print(cor)
 
-    # smooth of CF_APACADA
+    # smooth of CF_APCADA
     from scipy.signal import savgol_filter
 
-    df_valid.insert(0, 'CF_APACADA_smooth', savgol_filter(df_valid.CF_APACADA, window_length=25, polyorder=3))
+    df_valid.insert(0, 'CF_APCADA_smooth', savgol_filter(df_valid.CF_APCADA, window_length=25, polyorder=3))
     # ct_learn: replace value with condition:
-    df_valid = df_valid.where(df_valid['CF_APACADA_smooth'] <= 1, other=1)
+    df_valid = df_valid.where(df_valid['CF_APCADA_smooth'] <= 1, other=1)
 
-    REASEARCH.compare_curves(df_valid[{'CF_APACADA_smooth', 'CF_APACADA'}]['2021-01-04': '2021-01-07'],
+    REASEARCH.compare_curves(df_valid[{'CF_APCADA_smooth', 'CF_APCADA'}]['2021-01-04': '2021-01-07'],
                              output_tag='smoothed')
-    cor = df_valid[{'CF_APACADA_smooth', 'CF_APACADA', 'CF_XGB', 'CF_OBS'}].corr()
+    cor = df_valid[{'CF_APCADA_smooth', 'CF_APCADA', 'CF_XGB', 'CF_OBS'}].corr()
     print(cor)
 
     # ct_learn: new column
     df_valid.insert(0, column='bias_XGB', value=df_valid['CF_XGB'] - df_valid['CF_OBS'])
-    df_valid = df_valid.assign(bias_APACADA=df_valid['CF_APACADA'] - df_valid['CF_OBS'])
+    df_valid = df_valid.assign(bias_APCADA=df_valid['CF_APCADA'] - df_valid['CF_OBS'])
 
     REASEARCH.compare_curves(df_valid['2021-01-04': '2021-01-07'], output_tag='smoothed_with_bias')
-    cor = df_valid[{'CF_APACADA_smooth', 'CF_APACADA', 'CF_OBS', 'CF_XGB'}].corr()
+    cor = df_valid[{'CF_APCADA_smooth', 'CF_APCADA', 'CF_OBS', 'CF_XGB'}].corr()
     print(cor)
 
     # normality
-    REASEARCH.check_normal(df_valid[{'CF_APACADA'}], output_tag='check.normal')
+    REASEARCH.check_normal(df_valid[{'CF_APCADA'}], output_tag='check.normal')
     REASEARCH.check_normal(df_valid[{'CF_OBS'}], output_tag='CF_OBS')
     REASEARCH.check_normal(df_valid[{'CF_XGB'}], output_tag='check.normal')
 
     if cfg.job.valid.by_hour:
         # bias distribution
         REASEARCH.check_normal(df_valid[{'bias_XGB'}], output_tag='bias_XGB')
-        REASEARCH.check_normal(df_valid[{'bias_APACADA'}], output_tag='bias_APACADA')
+        REASEARCH.check_normal(df_valid[{'bias_APCADA'}], output_tag='bias_APCADA')
 
         # hourly validation:
         df_valid.plot(kind='')
-        df_valid[{'bias_XGB', 'bias_APACADA'}].groupby(df_valid.index.hour).mean().plot(kind='bar')
+        df_valid[{'bias_XGB', 'bias_APCADA'}].groupby(df_valid.index.hour).mean().plot(kind='bar')
         plt.title(f'hourly mean bias')
         plt.savefig(f'./plot/bias_in_hour.png', dpi=300)
         plt.show()
@@ -96,8 +96,8 @@ def cloud(cfg: DictConfig) -> None:
 
         # prepare data for violin:
         df3 = pd.DataFrame(pd.concat([ct2['ct'], ct2['ct']]))
-        df3.insert(0, 'bias', np.concatenate([ct2['bias_XGB'].values, ct2['bias_APACADA'].values]))
-        df3.insert(0, 'method', ['XGBoost' for x in range(len(ct2))] + ['APACADA' for i in range(len(ct2))])
+        df3.insert(0, 'bias', np.concatenate([ct2['bias_XGB'].values, ct2['bias_APCADA'].values]))
+        df3.insert(0, 'method', ['XGBoost' for x in range(len(ct2))] + ['APCADA' for i in range(len(ct2))])
 
         GEO_PLOT.plot_violin_df_1D(df=df3, x='ct', y='bias', y_unit='unitless', x_label='cloud types', hue='method',
                                    y_label='bias vs LACy CF', split=False, scale='area', inner='box', add_number=True,
@@ -106,6 +106,22 @@ def cloud(cfg: DictConfig) -> None:
         del df3
 
         print(f'good')
+
+    if cfg.job.valid.by_octas:
+
+        df_valid.insert(0, 'OBS_octas', GEO_PLOT.convert_cf_to_octas(df_valid.CF_OBS.values))
+        df_valid.insert(0, 'XGB_octas', GEO_PLOT.convert_cf_to_octas(df_valid.CF_XGB.values))
+
+        df4 = df_valid[{'XGB_octas'}]
+        df4.insert(0, 'CF_XGB', df_valid.CF_XGB * 8)
+        REASEARCH.compare_curves(df4[{'XGB_octas', 'CF_XGB'}]['2021-01-04': '2021-01-07'],
+                                 output_tag='octas')
+        del df4
+
+        REASEARCH.valid_by_octas(df_valid)
+
+        print(f'convert to octas')
+
 
     if any(GEO_PLOT.get_values_multilevel_dict(dict(cfg.job.data))):
         print('start to work...')

@@ -11,7 +11,8 @@ job:
     lacy: 1
   valid:
     by_hour: 0
-    by_height: 1
+    by_height: 0
+    by_octas: 1
 
 
 file:

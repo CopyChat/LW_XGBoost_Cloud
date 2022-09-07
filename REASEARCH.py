@@ -90,3 +90,41 @@ def add_ct_for_validation(df_valid, ct, output: str = None):
     return df_valid
 
 
+def valid_by_octas(df):
+    df.insert(0, 'bias_XGB_octas', df['XGB_octas'] - df['OBS_octas'])
+    df.insert(0, 'bias_APCADA_octas', df['PCA_APCADA'] - df['OBS_octas'])
+
+    # plot:
+    df[{'bias_APCADA_octas', 'bias_XGB_octas'}].apply(pd.Series.value_counts).plot(y=['bias_XGB_octas', 'bias_APCADA_octas'], kind='bar')
+    plt.savefig(f'./plot/valid_by_octas.png', dpi=300)
+    plt.show()
+
+    # plot 2:
+
+    total_n = len(df)
+
+    bias_1 = []
+    bias_2 = []
+    for i in range(9):
+        bias_n2 = len(df[np.abs(df['bias_APCADA_octas']) <= i]) * 100 / total_n
+        bias_n1 = len(df[np.abs(df['bias_XGB_octas']) <= i]) * 100 / total_n
+
+        print(f'bias <= {i:g} = {bias_n1: 4.2f}%, {bias_n2: 4.2f}%')
+
+        bias_1.append(bias_n1)
+        bias_2.append(bias_n2)
+
+    x = np.array(range(9))
+    plt.bar(x - 0.1, width=0.2,height=bias_1, color='blue', label='XGB_octas')
+    plt.bar(x + 0.1, width=0.2,height=bias_2, color='orange', label='APCADA_octas')
+
+    plt.ylim([0, 120])
+    plt.ylabel('%')
+    plt.xlabel('bias absolute in octas')
+    plt.title(f'frequency of absolute bias')
+    plt.legend(loc='upper left')
+
+    plt.savefig(f'./plot/valid_by_octas_bias_frequency.png', dpi=300)
+    plt.show()
+
+
