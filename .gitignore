@@ -41,3 +41,6 @@
 /dataset/ct.S_NWC_CT_MSG1_globeI-VISIR_201706-202206.lonlat.moufia.yearly.local_time.reallocation.regroup
 /dataset/data_valid_ct
 /plot/valid.1.smoothed_with_bias.png
+/plot/valid.1.octas.png
+/plot/valid_by_octas.png
+/plot/valid_by_octas_bias_frequency.png
