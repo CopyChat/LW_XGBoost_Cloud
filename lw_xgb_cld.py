@@ -21,7 +21,7 @@ from omegaconf import DictConfig
 import pandas as pd
 
 import GEO_PLOT
-import REASEARCH
+import RESEARCH
 import PUBLISH
 
 
@@ -40,10 +40,10 @@ def cloud(cfg: DictConfig) -> None:
     df_valid = df_raw[{'CF_XGB', 'CF_APCADA', 'CF_OBS', 'PCA_APCADA'}]
 
     # plot first week:
-    REASEARCH.compare_curves(df_valid['2021-01-04': '2021-01-10'], output_tag='raw')
+    RESEARCH.compare_curves(df_valid['2021-01-04': '2021-01-10'], output_tag='raw')
 
     # correlation:
-    REASEARCH.plot_corr(df_valid)
+    RESEARCH.plot_corr(df_valid)
     cor = df_valid.corr()
     print(cor)
 
@@ -54,7 +54,7 @@ def cloud(cfg: DictConfig) -> None:
     # ct_learn: replace value with condition:
     df_valid = df_valid.where(df_valid['CF_APCADA_smooth'] <= 1, other=1)
 
-    REASEARCH.compare_curves(df_valid[{'CF_APCADA_smooth', 'CF_APCADA'}]['2021-01-04': '2021-01-07'],
+    RESEARCH.compare_curves(df_valid[{'CF_APCADA_smooth', 'CF_APCADA'}]['2021-01-04': '2021-01-07'],
                              output_tag='smoothed')
     cor = df_valid[{'CF_APCADA_smooth', 'CF_APCADA', 'CF_XGB', 'CF_OBS'}].corr()
     print(cor)
@@ -63,19 +63,19 @@ def cloud(cfg: DictConfig) -> None:
     df_valid.insert(0, column='bias_XGB', value=df_valid['CF_XGB'] - df_valid['CF_OBS'])
     df_valid = df_valid.assign(bias_APCADA=df_valid['CF_APCADA'] - df_valid['CF_OBS'])
 
-    REASEARCH.compare_curves(df_valid['2021-01-04': '2021-01-07'], output_tag='smoothed_with_bias')
+    RESEARCH.compare_curves(df_valid['2021-01-04': '2021-01-07'], output_tag='smoothed_with_bias')
     cor = df_valid[{'CF_APCADA_smooth', 'CF_APCADA', 'CF_OBS', 'CF_XGB'}].corr()
     print(cor)
 
     # normality
-    REASEARCH.check_normal(df_valid[{'CF_APCADA'}], output_tag='check.normal')
-    REASEARCH.check_normal(df_valid[{'CF_OBS'}], output_tag='CF_OBS')
-    REASEARCH.check_normal(df_valid[{'CF_XGB'}], output_tag='check.normal')
+    RESEARCH.check_normal(df_valid[{'CF_APCADA'}], output_tag='check.normal')
+    RESEARCH.check_normal(df_valid[{'CF_OBS'}], output_tag='CF_OBS')
+    RESEARCH.check_normal(df_valid[{'CF_XGB'}], output_tag='check.normal')
 
     if cfg.job.valid.by_hour:
         # bias distribution
-        REASEARCH.check_normal(df_valid[{'bias_XGB'}], output_tag='bias_XGB')
-        REASEARCH.check_normal(df_valid[{'bias_APCADA'}], output_tag='bias_APCADA')
+        RESEARCH.check_normal(df_valid[{'bias_XGB'}], output_tag='bias_XGB')
+        RESEARCH.check_normal(df_valid[{'bias_APCADA'}], output_tag='bias_APCADA')
 
         # hourly validation:
         df_valid.plot(kind='')
@@ -87,7 +87,7 @@ def cloud(cfg: DictConfig) -> None:
     if cfg.job.valid.by_height:
         # to prepare ct, and merge it to the df_valid:
         # ct = pd.read_pickle(cfg.file.ct_SAF_NWC_moufia)
-        # REASEARCH.add_ct_for_validation(df_valid, ct)
+        # RESEARCH.add_ct_for_validation(df_valid, ct)
         ct = pd.read_pickle(cfg.file.data_valid_ct)
 
         # limit the time difference between lacy obs and saf_nwc data:
@@ -114,11 +114,10 @@ def cloud(cfg: DictConfig) -> None:
 
         df4 = df_valid[{'XGB_octas'}]
         df4.insert(0, 'CF_XGB', df_valid.CF_XGB * 8)
-        REASEARCH.compare_curves(df4[{'XGB_octas', 'CF_XGB'}]['2021-01-04': '2021-01-07'],
-                                 output_tag='octas')
+        RESEARCH.compare_curves(df4[{'XGB_octas', 'CF_XGB'}]['2021-01-04': '2021-01-07'], output_tag='octas')
         del df4
 
-        REASEARCH.valid_by_octas(df_valid)
+        RESEARCH.valid_by_octas(df_valid)
 
         print(f'convert to octas')
 
