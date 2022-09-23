@@ -2,6 +2,8 @@
 to apply ML method to improve cloud fraction estimation,
 compared with traditional physical cloud method based on thermal physics,
 where assumptions made in lower level of atmosphere.
+
+This file is to analysis the XGBoost results, all ML works are deal with MS Code.
 """
 
 __version__ = f'Version 2.0  \nTime-stamp: <2022-08-19>'
