@@ -12,6 +12,7 @@
 /.idea/webResources.xml
 /.idea/LW_XGBoost_Cloud.iml
 /doc/ref/metadata.jpg
+/local_data/data_bsrn_2019-2022.lwidjy.qca_v.csv
 /.idea/misc.xml
 /doc/ref/Modeling of downward longwave radiation and radiative cooling potential in China Journal of Renewab.pdf
 /.idea/modules.xml
@@ -48,3 +49,9 @@ doc/presentation/.DS_Store
 .vscode/settings.json
 doc/.DS_Store
 .DS_Store
+*.docx
+/local_data
+/XGBoost/backup/curvesWithout_Pressure.png
+/XGBoost/backup/default_model.png
+/XGBoost/backup/Without_Pressure
+/XGBoost/backup/Without_Pressure.png
