@@ -32,6 +32,28 @@ def cloud(cfg: DictConfig) -> None:
     """
     """
     print('start to work ...')
+
+    if cfg.job.data.lacy_bsrn:
+        print(f'merge lacy and BSRN')
+
+        # read lacy:
+        lacy = GEO_PLOT.read_csv_into_df_with_header(cfg.file.raw_lacy)
+        bsrn = GEO_PLOT.read_csv_into_df_with_header(cfg.file.raw_bsrn)
+
+        raw = bsrn.merge(lacy, left_index=True, right_index=True)
+
+        # convert to local time
+        raw_local = GEO_PLOT.convert_df_shifttime(raw, 3600 * 4)
+
+        # remove nan:
+
+        # missing data check:
+
+        raw_local.to_csv(cfg.file.raw)
+        # more data added. lacy: 2019-09 - 2022-01 and 2022-05 - 2022-09
+
+
+
     # read
     df_raw = GEO_PLOT.read_csv_into_df_with_header(cfg.file.result_mino)
     # shift to local time
