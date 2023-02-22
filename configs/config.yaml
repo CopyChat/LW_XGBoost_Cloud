@@ -8,8 +8,7 @@ hydra:
 
 job:
   data:
-    lacy_bsrn: 0
-    check: 1
+    lacy_bsrn: 1
   valid:
     by_hour: 0
     by_height: 0

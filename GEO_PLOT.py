@@ -785,15 +785,19 @@ def check_missing_da_df(start: str, end: str, freq: str, data: xr.DataArray, plo
             B = data.index.strftime('%Y-%m-%d %H:%M')
         C = [i for i in A if i not in B]
 
+        print(f'to find mon hour matrix')
         missing_datetime = pd.to_datetime(C)
         for i in range(1, 13):
+            # print(f'{i:g}\t')    # month
             monthly = missing_datetime[missing_datetime.month == i]
             for h in range(0, 24):
+                # print(f'{h:g}\t')
                 missing_hours = list(monthly.groupby(monthly.hour).keys())
 
                 if h in missing_hours:
                     matrix_mon_hour[i - 1, h] = monthly.groupby(monthly.hour)[h].size
-                print(f'mont={i:g}, hour={h:g}')
+
+                    print(f'mont={i:g}, hour={h:g}: {matrix_mon_hour[i-1,h]:g}')
 
     if plot:
 

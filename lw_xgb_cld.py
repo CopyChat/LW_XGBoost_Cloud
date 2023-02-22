@@ -46,12 +46,17 @@ def cloud(cfg: DictConfig) -> None:
         raw_local = GEO_PLOT.convert_df_shifttime(raw, 3600 * 4)
 
         # remove nan:
+        raw_local = raw_local.dropna()
 
         # missing data check:
+        GEO_PLOT.check_missing_da_df(start='2019-09-01 00:00:00',
+                                     end='2022-09-01 00:00:00',
+                                     # end='2022-08-31 17:53:00',
+                                     freq='T', data=raw_local)
+
 
         raw_local.to_csv(cfg.file.raw)
         # more data added. lacy: 2019-09 - 2022-01 and 2022-05 - 2022-09
-
 
 
     # read
