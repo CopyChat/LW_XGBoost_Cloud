@@ -49,15 +49,14 @@ def cloud(cfg: DictConfig) -> None:
         raw_local = raw_local.dropna()
 
         # missing data check:
-        GEO_PLOT.check_missing_da_df(start='2019-09-01 00:00:00',
-                                     end='2022-09-01 00:00:00',
+        GEO_PLOT.check_missing_da_df(start='2019-10-01 00:00:00',
+                                     end='2021-10-01 00:00:00',
                                      # end='2022-08-31 17:53:00',
+                                     output_plot_tag='train_data',
                                      freq='T', data=raw_local)
-
 
         raw_local.to_csv(cfg.file.raw)
         # more data added. lacy: 2019-09 - 2022-01 and 2022-05 - 2022-09
-
 
     # read
     df_raw = GEO_PLOT.read_csv_into_df_with_header(cfg.file.result_mino)
@@ -149,7 +148,6 @@ def cloud(cfg: DictConfig) -> None:
         RESEARCH.valid_by_octas(df_valid)
 
         print(f'convert to octas')
-
 
     if any(GEO_PLOT.get_values_multilevel_dict(dict(cfg.job.data))):
         print('start to work...')

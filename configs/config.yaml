@@ -17,8 +17,8 @@ job:
 
 file:
   raw_lacy: ./local_data/clt.lacy.201909.202209.30sec.utc.csv
-  raw_bsrn: ./local_data/meteo.bsrn_2019-2022.1min.utc.csv
-  result_mino: ./dataset/test_result_2022-01-03_2022-02-01.csv
+  raw_bsrn: ./local_data/meteo.bsrn_pangaea.20190901-20220901.1min.utc.csv
+  result_mino: ./dataset/test_result_mino.2022-01-03_2022-02-01.csv
   ct_SAF_NWC_moufia: ./dataset/ct.S_NWC_CT_MSG1_globeI-VISIR_201706-202206.lonlat.moufia.yearly.local_time.reallocation.regroup
   data_valid_ct: ./dataset/data_valid_ct
   raw: ./dataset/raw.bsrn_lacy.2019_2022.1min.local_time.csv
