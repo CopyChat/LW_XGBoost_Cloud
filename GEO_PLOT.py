@@ -35,12 +35,6 @@ from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 from statsmodels.stats.multitest import fdrcorrection as fdr_cor
 
 
-def ct_learn():
-
-    # add a new column to existing df:
-    print(f'good')
-
-
 def fig_add_headers(
         fig,  # input fig or GridSpec or GridSpecFromSubplotSpec
         *,
@@ -896,15 +890,22 @@ def check_nan_inf_da_df(df):
                 print(f'index = {index:g}', df.iloc[index])
 
 
-def plot_violin_df_1D(df: pd.DataFrame, x: str, y: str, y_unit: str = '',
-                      x_label: str = 0, y_label: str = 0, inner='box', scale='area',
-                      hue: str = 0, split: bool = False, x_ticks_labels: list = None,
-                      suptitle_add_word: str = '',
-                      add_number: bool = True
-                      ):
+def plot_violin_boxen_df_1D(df: pd.DataFrame,
+                            x: str = 'x', x_unit: str = None,
+                            y: str = 'y', y_unit: str = None, ymin=0, ymax=100,
+                            plot_type: str = 'violin',
+                            scale = 'area',
+                            x_label: str = None, y_label: str = None,
+                            x_ticks_labels = None,
+                            split=False,
+                            add_number=False,
+                            hue: str = 0,
+                            suptitle_add_word: str = '',
+                            ):
     """
     plot violin plot
     Args:
+        x_unit:
         y_label ():
         x_label ():
         y_unit ():
@@ -923,8 +924,12 @@ def plot_violin_df_1D(df: pd.DataFrame, x: str, y: str, y_unit: str = '',
         x_label = x
     if y_label == 0:
         y_label = y
-    if y_unit != 0:
+
+    # set unit
+    if y_unit != None:
         y_label = f'{y_label:s} ({y_unit:s})'
+    if x_unit != None:
+        x_label = f'{x_label:s} ({x_unit:s})'
 
     from seaborn import violinplot
 
@@ -936,17 +941,35 @@ def plot_violin_df_1D(df: pd.DataFrame, x: str, y: str, y_unit: str = '',
     else:
         n_hue = 1
 
+    max_df = np.max(df[y])
+
     fig_width = n_x * n_hue
 
-    fig, ax = plt.subplots(figsize=(fig_width, 6), dpi=220)
-    if hue:
-        ax = violinplot(x=x, y=y, hue=hue, data=df, split=split, inner=inner, scale=scale)
-    else:
-        ax = violinplot(x=x, y=y, data=df)
+    print(n_x, n_hue, fig_width)
+
+    fig, ax = plt.subplots(figsize=(8, 6), dpi=300)
+
+    if plot_type == 'violin':
+        if hue:
+            ax = violinplot(x=x, y=y, hue=hue, scale=scale, data=df, split=split)
+        else:
+            ax = violinplot(x=x, y=y, scale=scale, data=df, split=split)
+
+    if plot_type == 'boxen':
+        if hue:
+            ax = sns.boxenplot(x=x, y=y, hue=hue, data=df, scale=scale)
+        else:
+            ax = sns.boxenplot(x=x, y=y, data=df, scale=scale)
+
+    ax.set_ylim(ymin, ymax)
+    ax.set_xlabel(x_label)
+
+    if x_ticks_labels is not None:
+        ax.set_xticklabels(x_ticks_labels, minor=False)
 
     plt.grid()
 
-    plt.ylabel(f'{y:s} ({y_unit:s})')
+    plt.ylabel(f'{y_label:s}')
     title = f'{y:s} in {x:s}'
 
     if add_number:
@@ -977,8 +1000,9 @@ def plot_violin_df_1D(df: pd.DataFrame, x: str, y: str, y_unit: str = '',
 
     fig.suptitle(title)
 
-    plt.savefig(f'./plot/{title.replace(" ", "_"):s}.'
+    plt.savefig(f'./plot/{plot_type:s}.{title.replace(" ", "_"):s}.'
                 f'.png', dpi=300)
+    print(f'done')
     plt.show()
 
 
@@ -991,7 +1015,6 @@ def convert_cf_to_octas(array_1D: np.ndarray):
     octas = (array_1D.reshape(-1, 1) < intervals).argmax(axis=1)
 
     return octas
-
 
 
 def daily_mean_da(da: xr.DataArray):
@@ -1322,7 +1345,8 @@ def convert_unit_era5_flux(flux: xr.DataArray, is_ensemble: bool = 0):
 
 
 def plot_cyclone_in_classif(classif: pd.DataFrame,
-                            radius: float = 3,
+                            radius: float = 5,
+                            tag_subplot: str = 'Regime_',
                             cen_lon: float = 55.5,
                             cen_lat: float = -21.1,
                             suptitle_add_word: str = ''
@@ -1345,20 +1369,15 @@ def plot_cyclone_in_classif(classif: pd.DataFrame,
     """
 
     # read cyclone
-    cyclone_file = f'~/local_data/cyclones.2.csv'
+    # cyclone_file = f'~/local_data/cyclones.2.csv'
+    cyclone_file = f'./dataset/cyc_df.csv'
     cyc = pd.read_csv(cyclone_file)
-    cyc['Datetime'] = pd.to_datetime(cyc['DAT'])
+    cyc['Datetime'] = pd.to_datetime(cyc['DateTime'])
     df_cyclone = cyc.set_index('Datetime')
 
     # ----------------------------- get definitions -----------------------------
     class_names = list(set(classif.values.ravel()))
     n_class = len(class_names)
-
-    lat_min = cen_lat - radius
-    lat_max = cen_lat + radius
-
-    lon_min = cen_lon - radius
-    lon_max = cen_lon + radius
 
     print(f'plot cyclone within {int(radius): g} degree ...')
     # ----------------------------- prepare fig -----------------------------
@@ -1393,50 +1412,62 @@ def plot_cyclone_in_classif(classif: pd.DataFrame,
                 # name could be the length > 1, since the cyclone file is 6-hourly.
 
                 # sometimes there are 2 cyclones at the same day:
-                cyclone_name_1day = set(list(name.values))
+                cyclone_name_1day = list(set(list(name.values)))
                 num_cyclone_1day = len(cyclone_name_1day)
-                if num_cyclone_1day > 1:
-                    print(f'got more than one cyclones in one day')
+                # if num_cyclone_1day > 1:
+                #     print(f'got more than one cyclones in one day:')
+                #     print(f'-------------------------------------', class_one.index.date[i])
+                #     print(cyclone_name_1day)
 
                 # to see if these cyclones pass within the $radius
+                # if @ reunion
+                record_in_radius = 0
                 for cyc in cyclone_name_1day:
+                    # check every cyclone in this day, while num of day remains one even having two TCs.
 
                     cyc_day = all_cyc_1day[all_cyc_1day['NOM_CYC'] == cyc]
 
                     lat1 = cyc_day[cyc_day['NOM_CYC'] == cyc]['LAT']
                     lon1 = cyc_day[cyc_day['NOM_CYC'] == cyc]['LON']
 
-                    # if @ reunion
-                    record_in_radius = 0
                     for record in range(len(lat1)):
-                        if lat_min <= lat1[record] <= lat_max:
-                            if lon_min <= lon1[record] <= lon_max:
-                                record_in_radius += 1
 
-                    if record_in_radius > 0:
-                        # add this cyclone in today (do this in every day if satisfied)
-                        total += 1
-                        # plot path (up to 6 points) if one or more of these 6hourly records is within a radius
-                        plt.plot(lon1, lat1, marker='.', label='path within a day')  # only path of the day
-                        # plt.legend(loc='lower left', prop={'size': 8})
+                        if distance_two_point_deg(
+                                lon1=cen_lon,
+                                lon2=lon1[record],
+                                lat1=cen_lat,
+                                lat2=lat1[record]
+                        ) < radius:
+                            record_in_radius += 1
 
-                        # full_path of this cyclone
-                        # full_path_cyc = df_cyclone[df_cyclone['NOM_CYC'] == cyc]
-                        # plt.plot(full_path_cyc['LON'], full_path_cyc['LAT'])
+                            # plot only the tc within radius
+                            # plot path (up to 6 points) if one or more of these 6hourly records is within a radius
+                            plt.plot(lon1, lat1, marker='.', label='')  # only path of the day
+                            # plt.legend(loc='lower left', prop={'size': 8})
 
-                        # output this cyclone:
-                        print(i, total, record_in_radius, cyc_day)
+                if record_in_radius > 0:
+                    # add this cyclone in today (do this in every day if satisfied)
+                    total += 1
+
+                    # full_path of this cyclone
+                    # full_path_cyc = df_cyclone[df_cyclone['NOM_CYC'] == cyc]
+                    # plt.plot(full_path_cyc['LON'], full_path_cyc['LAT'])
+
+                    # output this cyclone:
+                    print(i, total, record_in_radius, cyc_day)
 
         # ----------------------------- end of plot -----------------------------
 
         # plt.title(f'CL{c + 1:g}')
 
-        ax.text(0.05, 0.95, f'Regime_{c + 1:g}',
+        ax.text(0.05, 0.95, f'{tag_subplot:s}{c + 1:g}',
+                # ax.text(0.05, 0.95, f'Regimes_{c + 1:g}',
                 fontsize=14, horizontalalignment='left', weight='bold', verticalalignment='top', transform=ax.transAxes)
 
-        ax.text(0.96, 0.95, f'nearby cyclone ={total:g}\n'
-                            f'total day = {len(class_one):g}\n'
-                            f'{100 * total / len(class_one):4.1f}%',
+        ax.text(0.96, 0.95,
+                f'total day = {len(class_one):g}\n'
+                f'TC day ={total:g}\n'
+                f'{100 * total / len(class_one):4.1f}%',
                 fontsize=14, horizontalalignment='right', verticalalignment='top', transform=ax.transAxes)
 
         # ax.text(0.06, 0.01, f'plot only the path within a day',
@@ -1456,10 +1487,14 @@ def plot_cyclone_in_classif(classif: pd.DataFrame,
     print(f'got plot')
 
 
+def distance_two_point_deg(lon1, lat1, lon2, lat2):
+    return np.sqrt(np.square(lon2 - lon1) + np.square(lat2 - lat1))
+
+
 def select_nearby_cyclone(cyc_df: pd.DataFrame,
                           lon_name: str = 'lon',
                           lat_name: str = 'lat',
-                          radius: float = 3,
+                          radius: float = 5,
                           cen_lon: float = 55.5,
                           cen_lat: float = -21.1
                           ):
@@ -1481,11 +1516,11 @@ def select_nearby_cyclone(cyc_df: pd.DataFrame,
     """
 
     df = cyc_df.loc[
-        (cyc_df[lat_name] >= cen_lat - radius) &
-        (cyc_df[lat_name] <= cen_lat + radius) &
-        (cyc_df[lon_name] >= cen_lon - radius) &
-        (cyc_df[lon_name] <= cen_lon + radius)
-        ]
+        distance_two_point_deg(
+            lat1=cen_lat,
+            lat2=cyc_df[lat_name],
+            lon1=cen_lon,
+            lon2=cyc_df[lon_name]) <= radius]
 
     return df
 
@@ -1503,7 +1538,7 @@ def select_pixel_da(da: xr.DataArray, lon, lat, n_pixel: int = 1,
     """
 
     # distance
-    dis = (da.lon - lon)**2 + (da.lat - lat)**2
+    dis = (da.lon - lon) ** 2 + (da.lat - lat) ** 2
     index = dis.argmin(dim=['x', 'y'])
     index_x = index['x']
     index_y = index['y']
@@ -1513,11 +1548,10 @@ def select_pixel_da(da: xr.DataArray, lon, lat, n_pixel: int = 1,
 
     # Now I can use that index location to get the values at the x/y diminsion
     point_1 = da.sel(x=index_x, y=index_y)
-    point_9 = da.sel(x=[index_x-1, index_x, index_x + 1],
-                     y=[index_y-1, index_y, index_y + 1])
+    point_9 = da.sel(x=[index_x - 1, index_x, index_x + 1],
+                     y=[index_y - 1, index_y, index_y + 1])
 
     if plot:
-
         # plot the nearest 9 points:
         point_9p = point_9[0]
 
@@ -1907,21 +1941,121 @@ def plot_diurnal_curve_in_classif(classif: pd.DataFrame, field_1D: xr.DataArray,
     print(f'got plot ')
 
 
+def plot_surface_circulation_diurnal_cycle_classif(axs, classif: pd.DataFrame, field: xr.DataArray,
+                                                   moisture_flux: bool = False, anomaly: bool = False,
+                                                   circulation_name: str = 'surface',
+                                                   area: str = 'bigreu',
+                                                   test: bool = False):
+    """
+    add circulation in subplot: 1) wind, 2) moisture flux by a) mean or b) anomaly
+    Args:
+        ax:
+        type:
+
+    Returns:
+
+    """
+    print(f'plot surface circulation ...')
+    # ----------------------------- get definitions -----------------------------
+    class_names = list(set(classif.values.ravel()))
+    n_class = len(class_names)
+
+    hours = list(set(field.time.dt.hour.data))
+    n_hour = len(hours)
+
+    # class_column_name = classif.columns.to_list()[0]
+
+    print(f'loading wind data ... ')
+    warnings.warn('CTANG: load data from 1999-2016, make sure that the data period is correct,'
+                  ' check and check it again')
+
+    local_data = '/Users/ctang/local_data/era5'
+    u_file = f'{local_data:s}/u10/u10.hourly.era5.1999-2016.{area:s}.local_daytime.nc'
+    v_file = f'{local_data:s}/v10/v10.hourly.era5.1999-2016.{area:s}.local_daytime.nc'
+
+    u = read_to_standard_da(u_file, 'u10')
+    v = read_to_standard_da(v_file, 'v10')
+    # classif OLR is from 1979 to 2018.
+
+    if test:
+        u = u.sel(time=slice('19990101', '20001201'))
+        v = v.sel(time=slice('19990101', '20001201'))
+
+    if moisture_flux:
+        qs_file = f'/Users/ctang/local_data/era5/q_specific/sp.era5.hourly.1999-2016.bigreu.local_daytime.nc'
+        qs = read_to_standard_da(qs_file, 'sp')
+        u = u * qs
+        u = u.assign_attrs({'units': 'g/kg m/s'})
+        u = u.rename('moisture flux')
+
+        v = v * qs
+        v = v.assign_attrs({'units': 'g/kg m/s'})
+        v = v.rename('moisture flux')
+
+    if anomaly:
+        print(f'plot surface wind anomaly ...')
+
+        u_anomaly = anomaly_hourly(u)
+        v_anomaly = anomaly_hourly(v)
+
+        u = u_anomaly.assign_attrs({'units': u.units})
+        v = v_anomaly.assign_attrs({'units': v.units})
+        # after calculation the units are lost, get it back.
+
+    u_in_class = get_data_in_classif(u, classif, significant=False, time_mean=False)
+    v_in_class = get_data_in_classif(v, classif, significant=False, time_mean=False)
+
+    for cls in range(n_class):
+        print(f'plot surface flux in class = {cls + 1:g}')
+
+        u_in_1class = u_in_class.where(u_in_class['class'] == class_names[cls], drop=True).squeeze()
+        v_in_1class = v_in_class.where(v_in_class['class'] == class_names[cls], drop=True).squeeze()
+
+        u_hourly_mean = u_in_1class.groupby(u_in_1class.time.dt.hour).mean()
+        v_hourly_mean = v_in_1class.groupby(v_in_1class.time.dt.hour).mean()
+
+        for hour in range(n_hour):
+            plt.sca(axs[cls, hour])
+            ax = axs[cls, hour]
+
+            u_1hour = u_hourly_mean.sel(hour=hours[hour])
+            v_1hour = v_hourly_mean.sel(hour=hours[hour])
+
+            # parameter to define the quiver length and key:
+            if anomaly:
+                field_scale = u.std()
+            else:
+                field_scale = u.mean()
+
+            plot_wind_subplot(area=area,
+                              lon=u_1hour.lon, lat=v_1hour.lat,
+                              u=u_1hour,
+                              v=v_1hour,
+                              bias=anomaly,
+                              # key_input=1.5, # for wind anomaly bigreu
+                              key_input=10,  # hourly wind bigreu
+                              key_units=u.units,
+                              plot_field_flux=True,
+                              field_scale=field_scale,
+                              ax=ax)
+
+
 def plot_diurnal_cycle_field_in_classif(classif: pd.DataFrame,
                                         field: xr.DataArray,
                                         area: str, vmax, vmin,
                                         cmap='default',
-                                        bias: bool = True,
-                                        plot_wind: bool = 0,
-                                        wind_anomaly: bool = 0,
-                                        plot_field_flux: bool = 0,
-                                        field_flux_data: xr.DataArray = None,
-                                        field_flux_name: str = 'field flux',
-                                        plt_type: str = 'contourf',
+                                        field_bias: bool = True,
+                                        plot_circulation: bool = 0,
+                                        circulation_anomaly: bool = 0,
+                                        plot_moisture_flux: bool = 0,
+                                        circulation_name: str = 'field flux',
+                                        plt_type: str = 'pcolormesh',
                                         only_significant_points: bool = 0,
                                         str_class_names: list = None,
+                                        row_headers: str = None, col_headers: str = None,
                                         suptitle_add_word: str = '',
-                                        data_slice_test: int = 1):
+                                        plot_num_record: bool = False,
+                                        test_run: int = 1):
     """
         diurnal field in classification, data are processed before input to this question
     note:
@@ -1930,22 +2064,22 @@ def plot_diurnal_cycle_field_in_classif(classif: pd.DataFrame,
         seasonal hourly mean, (%m-%d-%h), which is the difference between in-class value and all-day value.
     Args:
         plt_type:
-        plot_field_flux:  plot surface field flux instead of only wind, or wind anomaly (controled by wind_anomaly)
+        plot_moisture_flux:  plot surface field flux instead of only wind, or wind anomaly (controled by wind_anomaly)
         field_flux_data: such as specific humidity to plot moisture flux
-        field_flux_name:
+        circulation_name:
         str_class_names:  class may have a name, otherwise use the value in column 'class' in the DataFrame
-        wind_anomaly:  if plot anomaly of surface wind
+        circulation_anomaly:  if plot anomaly of surface wind
         classif (pandas.core.frame.DataFrame): DatetimeIndex with class name (1,2,3...)
         field (xarray.core.dataarray.DataArray): with time dim. field may in different days of classif,
             it will be selected by the available classif day by internal function.
         area (str):
         vmax (int):
         vmin (int):
-        bias (bool):
-        plot_wind (int):
+        field_bias (bool):
+        plot_circulation (int):
         only_significant_points (int):
         suptitle_add_word (str):
-        data_slice_test (int): if apply the data filter defined inside the function to boost the code,
+        test_run (int): if apply the data filter defined inside the function to boost the code,
             usually defined in the project level in the config file.
 
     Returns:
@@ -1953,6 +2087,9 @@ def plot_diurnal_cycle_field_in_classif(classif: pd.DataFrame,
     """
 
     # ----------------------------- data -----------------------------
+    if test_run:
+        field = field.sel(time=slice('19990101', '20001201'))
+
     data_in_class, class_size = get_data_in_classif(da=field, df=classif, time_mean=False,
                                                     significant=0, return_size=True)
     # when the data freq is not the freq as cla
@@ -1968,9 +2105,14 @@ def plot_diurnal_cycle_field_in_classif(classif: pd.DataFrame,
 
     # ----------------------------- plotting -----------------------------
     fig, axs = plt.subplots(nrows=n_class, ncols=n_hour, sharex=True, sharey=True,
-                            figsize=(20, 14), dpi=300,
+                            figsize=(20, 15), dpi=300,
                             subplot_kw={'projection': ccrs.PlateCarree()})
     fig.subplots_adjust(left=0.1, right=0.9, bottom=0.1, top=0.95, wspace=0.02, hspace=0.02)
+
+    # add headers:
+    font_kwargs = dict(fontfamily="monospace", fontweight="bold", fontsize=20)
+    font_kwargs = dict(fontfamily="sans-serif", fontweight="regular", fontsize=20)
+    fig_add_headers(fig, row_headers=row_headers, col_headers=col_headers, rotate_row_headers=True, **font_kwargs)
 
     for cls in range(n_class):
         print(f'plot class = {cls + 1:g}')
@@ -2002,26 +2144,12 @@ def plot_diurnal_cycle_field_in_classif(classif: pd.DataFrame,
             # got an error.
 
             cf = plot_geo_subplot_map(geomap=data_1h_mean,
-                                      vmax=vmax, vmin=vmin, bias=bias,
+                                      vmax=vmax, vmin=vmin, bias=field_bias,
                                       plot_cbar=False,
                                       statistics=0,
                                       plt_type=plt_type,
                                       cmap=cmap,
                                       ax=ax, domain=area, tag='')
-
-            if cls == 0:
-                ax.set_title(f'{hours[hour]:g}:00', fontsize=20)
-            if hour == 0:
-                plt.ylabel(f'CL{str(class_names[cls]):s} (num = {num_record:g})')
-                # TODO: add this class name/number to y axis
-
-            # class name:
-            if str_class_names is None:
-                ax.text(0.01, 0.98, f'#{cls + 1:g}', fontsize=20,
-                        horizontalalignment='left', verticalalignment='top', transform=ax.transAxes)
-            else:
-                ax.text(0.01, 0.98, f'{str_class_names[cls]:s}', fontsize=18,
-                        horizontalalignment='left', verticalalignment='top', transform=ax.transAxes)
 
             mean_value = np.float(data_1h_mean.mean())
 
@@ -2029,110 +2157,41 @@ def plot_diurnal_cycle_field_in_classif(classif: pd.DataFrame,
                 ax.text(0.98, 0.01, f'{mean_value:4.2f}', fontsize=16,
                         horizontalalignment='right', verticalalignment='bottom', transform=ax.transAxes)
             # num of record
-            ax.text(0.01, 0.01, f'{num_record:g}', fontsize=16,
-                    horizontalalignment='left', verticalalignment='bottom', transform=ax.transAxes)
+            if plot_num_record:
+                ax.text(0.01, 0.01, f'{num_record:g}', fontsize=16,
+                        horizontalalignment='left', verticalalignment='bottom', transform=ax.transAxes)
 
             ax.set_ylabel(f'#_{str(class_names[cls]):s}', color='b')
             ax.set_xlabel('xxx')
 
-    # ----------------------------- surface wind -----------------------------
-    if plot_wind:
-        print(f'plot surface wind ...')
+    # ----------------------------- surface circulation-----------------------------
 
-        print(f'loading wind data ... ')
-        warnings.warn('CTANG: load data from 1999-2016, make sure that the data period is correct,'
-                      ' check and check it again')
+    plot_surface_circulation_diurnal_cycle_classif(axs=axs, classif=classif, field=field,
+                                                   moisture_flux=plot_moisture_flux, anomaly=circulation_anomaly,
+                                                   area=area, test=test_run)
 
-        local_data = '/Users/ctang/local_data/era5'
-        u_file = f'{local_data:s}/u10/u10.hourly.era5.1999-2016.{area:s}.local_daytime.nc'
-        v_file = f'{local_data:s}/v10/v10.hourly.era5.1999-2016.{area:s}.local_daytime.nc'
-
-        u = read_to_standard_da(u_file, 'u10')
-        v = read_to_standard_da(v_file, 'v10')
-        # classif OLR is from 1979 to 2018.
-
-        if data_slice_test:
-            u = u.sel(time=slice('19990101', '20001201'))
-            v = v.sel(time=slice('19990101', '20001201'))
-
-        if wind_anomaly:
-            print(f'plot surface wind anomaly ...')
-
-            u_anomaly = anomaly_daily(u)
-            v_anomaly = anomaly_daily(v)
-
-            u = u_anomaly
-            v = v_anomaly
-
-        if plot_field_flux:
-            # such as moisture flux
-            u_units = u.units
-            u = u * field_flux_data
-            u = u.assign_attrs({'units': u_units})
-            u = u.rename(field_flux_name)
-
-            v = v * field_flux_data
-            v = v.assign_attrs({'units': u_units})
-            v = v.rename(field_flux_name)
-
-            # after calculation the units are lost, get it back.
-
-        u_in_class = get_data_in_classif(u, classif, significant=False, time_mean=False)
-        v_in_class = get_data_in_classif(v, classif, significant=False, time_mean=False)
-
-        for cls in range(n_class):
-            print(f'plot surface flux in class = {cls + 1:g}')
-
-            u_in_1class = u_in_class.where(u_in_class['class'] == class_names[cls], drop=True).squeeze()
-            v_in_1class = v_in_class.where(v_in_class['class'] == class_names[cls], drop=True).squeeze()
-
-            u_hourly_mean = u_in_1class.groupby(u_in_1class.time.dt.hour).mean()
-            v_hourly_mean = v_in_1class.groupby(v_in_1class.time.dt.hour).mean()
-
-            for hour in range(n_hour):
-                plt.sca(axs[cls, hour])
-                ax = axs[cls, hour]
-
-                u_1hour = u_hourly_mean.sel(hour=hours[hour])
-                v_1hour = v_hourly_mean.sel(hour=hours[hour])
-
-                # parameter to define the quiver length and key:
-                if plot_field_flux:
-                    if bias:
-                        field_scale = field_flux_data.std()
-                    else:
-                        field_scale = field_flux_data.mean()
-                else:
-                    field_scale = 1
-
-                plot_wind_subplot(area='bigreu',
-                                  lon=u_1hour.lon, lat=v_1hour.lat,
-                                  u=u_1hour,
-                                  v=v_1hour,
-                                  bias=wind_anomaly,
-                                  plot_field_flux=plot_field_flux,
-                                  field_scale=field_scale,
-                                  ax=ax)
-
-    # ----------------------------- end of plot -----------------------------
     cbar_label = f'{field.name:s} ({field.assign_attrs().units:s})'
-    cb_ax = fig.add_axes([0.15, 0.05, 0.7, 0.02])
+    cb_ax = fig.add_axes([0.15, 0.07, 0.7, 0.02])
     cb = plt.colorbar(cf, orientation='horizontal', shrink=0.8, pad=0.05, cax=cb_ax)
     cb.ax.tick_params(labelsize=24)
     cb.set_label(label=cbar_label, fontsize=24)
 
     # ----------------------------- title -----------------------------
-    if plot_wind:
-        suptitle_add_word += ' wind'
-        if wind_anomaly:
-            suptitle_add_word += ' anomaly surface'
-        else:
-            suptitle_add_word += ' mean surface'
+    if field_bias:
+        field_statistic = 'anomaly'
+    else:
+        field_statistic = 'mean'
 
-    if plot_field_flux:
-        suptitle_add_word += f' {field_flux_name:s}'
+    field_name = f'{field.assign_attrs().name:s}'
 
-    title = f'{field.assign_attrs().name:s} in class'
+    if circulation_anomaly:
+        circulation_statistic = 'anomaly'
+    else:
+        circulation_statistic = 'mean'
+
+    title = f'{field_statistic:s}_{field_name}.' \
+            f'{circulation_statistic:s}_{circulation_name}_flux.over_' \
+            f'{area:s}.with_sig_{only_significant_points:g}.test_run_{test_run:g}'
 
     if suptitle_add_word is not None:
         title = title + ' ' + suptitle_add_word
@@ -2141,11 +2200,7 @@ def plot_diurnal_cycle_field_in_classif(classif: pd.DataFrame,
 
     # ----------------------------- end of plot -----------------------------
 
-    plt.savefig(f'./plot/{title.replace(" ", "_"):s}'
-                f'.hourly_mean.{field.name:s}.in_class.{area:s}.'
-                f'wind_{plot_wind:g}.wind_anomaly_{wind_anomaly:g}.'
-                f'only_sig_{only_significant_points:g}.'
-                f'test_data_{data_slice_test:g}.png', dpi=300)
+    plt.savefig(f'./plot/{title.replace(" ", "_"):s}.png', dpi=300)
     plt.show()
     print(f'got plot ')
 
@@ -2153,6 +2208,8 @@ def plot_diurnal_cycle_field_in_classif(classif: pd.DataFrame,
 def plot_wind_subplot(area: str, lon: xr.DataArray, lat: xr.DataArray,
                       u: xr.DataArray, v: xr.DataArray,
                       ax,
+                      key_input=None,
+                      key_units=r'$ {m}/{s}$',
                       plot_field_flux: bool = 0,
                       field_scale=1, bias: int = 0):
     """
@@ -2207,13 +2264,18 @@ def plot_wind_subplot(area: str, lon: xr.DataArray, lat: xr.DataArray,
     if plot_field_flux:
         # the n_scale are really difficult to find, so use the default value
         n_scale = None
-        key = float(key * field_scale)
+
+        if key == None:
+            key = float(key * field_scale)
+        else:
+            key = key_input
 
     quiver_slices = slice(None, None, n_sclice)
     quiver_kwargs = {'headlength': headlength,
                      'headwidth': headwidth,
-                     'angles': 'uv', 'units': 'xy',
-                     'scale': n_scale}
+                     'scale_units': 'width',
+                     'angles': 'uv',
+                     'scale': 80}
     # a smaller scale parameter makes the arrow longer.
 
     circulation = ax.quiver(lon.values[quiver_slices],
@@ -2228,7 +2290,7 @@ def plot_wind_subplot(area: str, lon: xr.DataArray, lat: xr.DataArray,
                             # to get what you want now
                             color='green', zorder=2, **quiver_kwargs)
 
-    ax.quiverkey(circulation, 0.08, -0.1, key, f'{key:g}' + r'$ {m}/{s}$',
+    ax.quiverkey(circulation, 0.18, -0.1, key, f'{key:g} ' + key_units,
                  labelpos='E',
                  color='k', labelcolor='k', coordinates='axes')
     # ----------------------------- end of plot wind -----------------------------
@@ -2550,17 +2612,13 @@ def plot_ttt_regimes(olr_regimes: pd.DataFrame, olr: xr.DataArray,
     print(f'got plot')
 
 
-
-
-
-def plot_color_matrix(df: pd.DataFrame, ax, cbar_label: str, plot_number: bool = False,
-                      vmin = None, vmax = None,
-                      cmap=plt.cm.get_cmap('PiYG')):
+def plot_color_matrix(df: pd.DataFrame, ax, cbar_label: str, plot_number: bool = False, cmap='Blues'):
     """
     plot matrix by df, where x is column, y is index,
-    :param cmap:
     :param plot_number:
     :type plot_number:
+    :param cbar_label:
+    :type cbar_label: str
     :param df:
     :type df:
     :param ax:
@@ -2591,33 +2649,28 @@ def plot_color_matrix(df: pd.DataFrame, ax, cbar_label: str, plot_number: bool =
     # ax.set_ylabel('year')
     # ax.set_xlabel('month')
 
-    if vmin == None:
-        vmin = int(df.values.min())
-        vmax = int(df.values.max())
+    vmin = int(df.values.min())
+    vmax = int(df.values.max())
 
-    print(vmin, vmax)
+    # print(vmin, vmax)
 
     if vmin + vmax < vmax:
-        # c = ax.pcolor(df, cmap=plt.cm.get_cmap('coolwarm', df.max().max() + 1))
-        c = ax.pcolor(df, cmap=cmap)
-        cbar_ticks = value_cbar_ticks_from_vmax_vmin(vmax=vmax, vmin=vmin, num_bin=10)
+        c = ax.pcolor(df, cmap=plt.cm.get_cmap('coolwarm', df.max().max() + 1))
+        cbar_ticks = [x for x in range(vmin, vmax + 1, math.ceil((vmax - vmin) / 10))]
     else:
-        cbar_ticks = value_cbar_ticks_from_vmax_vmin(vmax=vmax, vmin=vmin, num_bin=10)
-        # cbar_ticks = [x for x in range(vmin, vmax, math.ceil((vmax - vmin) / 10))]
+        cbar_ticks = [x for x in range(vmin, vmax, math.ceil((vmax - vmin) / 10))]
 
     if plot_number:
         for i in range(df.shape[1]):  # x direction
             for j in range(df.shape[0]):  # y direction
                 c = df.iloc[j, i]
                 # notice to the order of
-                ax.text(x_ticks[i], y_ticks[j], f'{c:2.1f}', va='center', ha='center')
+                ax.text(x_ticks[i], y_ticks[j], f'{c:2.0f}', va='center', ha='center')
         # put cbar label
         ax.yaxis.set_label_position("right")
     else:
         cb = plt.colorbar(c, ax=ax, label=cbar_label, ticks=cbar_ticks)
         loc = [x + 0.5 for x in cbar_ticks]
-        # loc = [x for x in cbar_ticks]
-
         cb.set_ticks(loc)
         cb.set_ticklabels(cbar_ticks)
 
@@ -2983,7 +3036,7 @@ def plot_matrix_class_vs_class_field(class_x: pd.DataFrame,
                         horizontalalignment='right', verticalalignment='top', transform=ax.transAxes)
             else:
                 ax.text(0.98, 0.97, f'{observed[y, x]:g}'
-                                    # f'',
+                # f'',
                                     f' ({np.round(expected[y, x]):g})',
                         fontsize=10,
                         horizontalalignment='right', verticalalignment='top', transform=ax.transAxes)
@@ -3091,7 +3144,7 @@ def value_sig_neu_test_2d(contingency: np.ndarray,
     # for Neu's test:
     n_row = contingency.shape[0]
     n_col = contingency.shape[1]
-    k = n_row
+    k = (n_row - 1) * (n_col - 1)
     # for individual cell @(1-alpha/k) confidence level,
     # the upper tail z_value, i.e., the (1-alpha/k)/2 th percentile.
     z_score = stats.norm.interval(1 - alpha / k)[1]
@@ -3190,7 +3243,7 @@ def test_neu_test():
     print(left, right)
 
     print(f'input alpha= {alpha:4.2f}, '
-          f'the upper probability tail area is {alpha / 2/ k:4.4f}, '
+          f'the upper probability tail area is {alpha / 2 / k:4.4f}, '
           f'individual confidence level is {1 - alpha / k: 4.4f}, '
           f'z_score={z_score:4.3f}, k={k:g}')
 
@@ -3218,7 +3271,7 @@ def contingency_2df_table(class_x: pd.DataFrame, class_y: pd.DataFrame, plot: bo
         for j in range(len(class_name_x)):
             class_cross = class_one.loc[class_one[name_x] == class_name_x[j]]
             cross[i, j] = len(class_cross)
-            print(f'x = {j+1:g}, y = {i+1:g}, cross_size = {cross[i,j]:g}')
+            print(f'x = {j + 1:g}, y = {i + 1:g}, cross_size = {cross[i, j]:g}')
 
     cross_df = pd.DataFrame(data=cross, index=class_name_y, columns=class_name_x).astype(int)
 
@@ -3257,7 +3310,7 @@ def contingency_2df_table(class_x: pd.DataFrame, class_y: pd.DataFrame, plot: bo
         y_ticks = np.arange(df.shape[0]) + 0.5
 
         # inverse y_ticks, since the plot will go from bottom to up when using ax.text
-        y_ticks = y_ticks[::-1] #       up to down
+        y_ticks = y_ticks[::-1]  # up to down
 
         ax.set_xticks(x_ticks, minor=False)
         ax.set_yticks(y_ticks[::-1], minor=False)
@@ -3303,13 +3356,23 @@ def contingency_2df_table(class_x: pd.DataFrame, class_y: pd.DataFrame, plot: bo
             for i in range(number.shape[1]):  # x direction
                 for j in range(number.shape[0]):  # y direction
                     c = number[j, i]
+
+                    if c >= expected[j, i]:
+                        weight = 'bold'
+                    if c <= expected[j, i]:
+                        weight = 'normal'
+
                     # notice to the order of
                     if sig[j, i]:
-                        ax.text(x_ticks[i], y_ticks[j], f'{c:2.0f}', va='center', ha='center',
-                                weight='bold', fontsize=fontsize)
+                        style = 'italic'
                     else:
-                        ax.text(x_ticks[i], y_ticks[j], f'{c:2.0f}', va='center', ha='center',
-                                fontsize=fontsize)
+                        style = 'normal'
+
+                    # Boldface values are overrepresented and the others values are underrepresented.Italics denote 95 % significance
+                    # according to Neu’s test.
+
+                    ax.text(x_ticks[i], y_ticks[j], f'{c:2.0f}', va='center', ha='center',
+                            weight=weight, style=style, fontsize=fontsize)
             # put cbar label
             ax.yaxis.set_label_position("right")
 
@@ -3357,6 +3420,8 @@ def contingency_2df_table(class_x: pd.DataFrame, class_y: pd.DataFrame, plot: bo
         height = [len(data[data == x]) for x in class_name_y]
 
         colors_olr = ['darkgray', 'royalblue', 'indianred', 'darkgray', 'indianred', 'firebrick', 'darkgray']
+        patterns = [" ", "\\", "|", "-", "+", "x", "o", "O", ".", "*"]
+        # patterns = ["/", "\\", "|", "-", "+", "x", "o", "O", ".", "*"]
         # colors_olr = ['darkgray', 'blueviolet', 'orange', 'darkgray', 'orange', 'darkorange', 'darkgray']
 
         y_pos = np.arange(len(bars))
@@ -3960,7 +4025,7 @@ def get_T_value(conf_level: float = 0.05, dof: int = 10):
 # infinity   1.282   1.645   1.960   2.326   2.576   3.090
 
 
-def value_next_day_classif(df: pd.DataFrame):
+def value_transition_next_day_classif(df: pd.DataFrame):
     # classification transition:
 
     from datetime import timedelta
@@ -4131,8 +4196,9 @@ def value_significant_of_anomaly_2d_mask(field_3d: xr.DataArray, conf_level: flo
         # to make simple and faster:
         # check if the operation of dropna reduce seriously the size of data
         field = field_3d.dropna(sig_coord_name)
-        if len(field) / len(field_3d) < 0.90:
-            sys.exit('too much nan, > 10% in data check significant function')
+        if len(field) / len(field_3d) < 0.30:
+            # sometime we have to allow many nan since there are maybe a map with only land
+            sys.exit('too much nan, > 70% in data check significant function')
         t_map, p_map = stats.ttest_1samp(field, 0)
 
     if fdr_correction:
@@ -4316,6 +4382,38 @@ def convert_utc2local_da(test: bool, da):
     value_replace_in_xr(data=da, dim_name='time', new_values=np.array(time_local))
 
     return da
+
+
+def cal_persistence(classif: pd.DataFrame):
+    classif['duration'] = np.full(len(classif), fill_value=1)
+    # calculate duration:
+
+    today = 0
+    while today < len(classif) - 1:
+        # today:
+        cl_today = classif.iloc[today].values[0]
+        d = 1
+
+        coming_day = today
+
+        print('starting, today =', today)
+        while classif.iloc[coming_day + 1].values[0] == cl_today:
+            d += 1
+            coming_day += 1
+            print('coming day + 1 =', coming_day)
+            # save this number:
+            classif.iloc[today, -1] = int(d)
+            classif.iloc[today + 1:today + d, -1] = np.full(d - 1, fill_value=np.nan)
+            # to stop checking coming day t
+            if coming_day == len(classif) - 1:
+                today = len(classif)
+                break
+        else:
+            print('final d = ', d)
+            today += d
+            print('final today = ', today)
+
+    return classif
 
 
 def value_consistency_sign_with_mean_in_percentage_2d(field_3d: xr.DataArray):
@@ -4524,6 +4622,15 @@ def sellonlatbox(da: xr.DataArray, lonlatbox: list):
                                    da1[lat_name] < max(lonlatbox[2], lonlatbox[3])), drop=True)
 
     return da2
+
+
+def filter_remove_b_from_a_daily_df(a: pd.DataFrame, b: pd.DataFrame):
+
+    mask = [a.index.strftime("%Y-%m-%d")[i] in b.index.strftime("%Y-%m-%d") for i in range(len(a))]
+
+    mask_inverse = [not(i) for i in mask]
+
+    return a[mask_inverse]
 
 
 def filter_2d_by_mask(data: xr.DataArray, mask: xr.DataArray):
@@ -5040,7 +5147,6 @@ def plot_hourly_boxplot_by(df: pd.DataFrame, columns: list, by: str):
     :param by:
     :return:
     """
-
 
     if by == 'Month':
         nrow = 7
@@ -7012,7 +7118,7 @@ def plot_topo_reunion_high_reso(plot: bool = True, grid=None, output_tag: str = 
         lat_grid = list(lat - reso * 0.5)
         lat_grid.append(lat[-1] + 0.5 * reso)
 
-        # plot
+        # plot grid lines:
         plt.hlines(lat_grid, xmin=0, xmax=100, linestyle='--', color='gray', linewidth=0.5)
         plt.vlines(lon_grid, ymin=-30, ymax=0, linestyle='--', color='gray', linewidth=0.5)
 
@@ -7099,8 +7205,6 @@ def value_clearsky_radiation(
         lat: np.ndarray,
         model: str = 'climatology',
         show: bool = 1):
-    import pvlib
-    from pvlib import clearsky, atmosphere, solarposition
     from pvlib.location import Location
 
     # ----------------------------- definition -----------------------------
@@ -7178,6 +7282,12 @@ def value_lonlatbox_from_area(area: str):
 
     if area == 'SA_swio':
         box = [0, 90, -50, 10]
+
+    if area == 'cyc_swio':
+        box = [25, 90, -40, -5]
+
+    if area == 'cyc_swio_big':
+        box = [25, 90, -40, 0]
 
     if area == 'reu':
         box = [55.05, 56., -21.55, -20.7]
