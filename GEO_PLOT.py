@@ -626,16 +626,23 @@ def zenith_angle_reunion(df, ):
             for i in range(len(df))]
 
 
-def get_color():
+def get_color(n):
     """define some (8) colors to use for plotting ... """
 
     # return [plt.cm.Spectral(each)
     #         for each in np.linspace(0, 6, 8)]
 
     # return ['b', 'g', 'r', 'c', 'm', 'y', 'k']
-    return ['pink', 'darkviolet', 'blue', 'teal', 'forestgreen', 'darkorange', 'red',
-            'deeppink', 'blueviolet', 'royalblue', 'lightseagreen', 'limegreen', 'yellowgreen', 'tomato',
-            'silver', 'gray', 'black']
+
+    if n <= 6:
+        colors = ['red', 'darkorange',
+                  'green', 'cyan', 'blue', 'darkviolet',]
+    else:
+        colors = ['lightgrey', 'gray', 'lightcoral', 'firebrick', 'red', 'darkorange', 'gold', 'yellowgreen',
+                  'green', 'cyan', 'deepskyblue', 'blue', 'darkviolet', 'magenta', 'pink']
+    markers = ['o', 'v', '^', '<', '1', 's', 'p', 'P', '*', '+', 'x', 'd', 'D']
+
+    return colors
 
 
 def convert_ttr_era5_2_olr(ttr: xr.DataArray, is_reanalysis: bool):
@@ -2754,6 +2761,252 @@ def plot_join_heatmap_boxplot(da: xr.DataArray):
     plt.show()
 
 
+def drop_nan_infinity(df):
+
+    df_filter = df.isin([np.nan, np.inf, -np.inf])
+    # Mask df with the filter
+    df = df[~df_filter]
+
+    df.dropna(inplace=True)
+
+    return df
+
+
+def check_missing_df_da_interval(df, vmin=None, vmax=None, output_tag='', freq='H', columns=''):
+
+    for i in range(len(columns)):
+        col = columns[i]
+
+        print(col)
+        if vmax is not None:
+            df = df[df <= vmax]
+
+        if vmin is not None:
+            df = df[df >= vmin]
+            df = df.dropna()
+
+            check_missing_da_df(start=str(df.index.date[0]), end=str(df.index.date[-1]),
+                                freq=freq, data=df, output_plot_tag=output_tag+col)
+
+
+def plot_power_spectral_density_multi_columns_df(df: pd.DataFrame, columns: list = ['', ], title='',
+                              linestyles=None,
+                              vmax=None, vmin=None, check_missing=True,
+                              xlabel='', output_tag: str = ''):
+    """
+    applied project Sky_clearness_2023:
+    linestyles is a list of linestyle that could be applied by orders in the plot to group the lines.
+    """
+    from scipy import signal
+
+
+
+    colors = get_color(len(columns))
+
+    fig = plt.figure(figsize=(12, 8), dpi=300)
+
+    for i in range(len(columns)):
+        col = columns[i]
+
+        print(col)
+
+        if linestyles is not None:
+            linestyle = linestyles[i]
+        else:
+            linestyle = '-'
+
+        df1 = df[{col}]
+
+        # when compare PDF in a value range:
+        # such as Sky_Clearness 2023: for CI
+        # if vmax is not None:
+        #     df1 = df1[df1 <= vmax]
+        #
+        # if vmin is not None:
+        #     df1 = df1[df1 >= vmin]
+
+        # check missing data after the selecting above.
+
+        # if vmax is not None:
+        #     plt.xlim(vmin, vmax)
+
+        # -----------------
+        df1 = df1.fillna(0)
+        signal_data = df1.values.ravel()
+        fs = 1000.0  # 1 kHz sampling frequency
+        (f, S) = signal.welch(signal_data, fs=3600, nperseg=3600)
+
+        plt.semilogy(f, S, label=col, color=colors[i], linewidth=2, linestyle=linestyle,)
+
+        plt.xlim([0, 100])
+
+        # ax = sns.distplot(df1, hist=False, kde=True,
+        #                   label=col, bins=30, color=colors[i], hist_kws={'edgecolor': 'black'},
+        #                   kde_kws={'linewidth': 2, 'linestyle': linestyle})
+
+    # plt.legend(loc='upper left', prop={'size': 12})
+    plt.legend(prop={'size': 12})
+
+    plt.xlabel(xlabel)
+    plt.title(title)
+
+    plt.savefig(f'./plot/psd.{output_tag:s}.png', dpi=300)
+    plt.show()
+
+
+def plot_pdf_multi_columns_df(df: pd.DataFrame, columns: list = ['', ], title='',
+                              linestyles=None,
+                              sel_v_max=None, sel_v_min=None, check_missing=True,
+                              xlabel='', output_tag: str = ''):
+    """
+    applied project Sky_clearness_2023:
+    linestyles is a list of linestyle that could be applied by orders in the plot to group the lines.
+    """
+
+    colors = get_color(len(columns))
+
+    fig = plt.figure(figsize=(12, 8), dpi=300)
+
+    for i in range(len(columns)):
+        col = columns[i]
+
+        print(col)
+
+        if linestyles is not None:
+            linestyle = linestyles[i]
+        else:
+            linestyle = '-'
+
+        df1 = df[{col}]
+
+        # when compare PDF in a value range:
+        # such as Sky_Clearness 2023: for CI
+        if sel_v_max is not None:
+            df1 = df1[df1 <= sel_v_max]
+
+        if sel_v_min is not None:
+            df1 = df1[df1 >= sel_v_min]
+
+        # check missing data after the selecting above.
+
+        ax = sns.distplot(df1, hist=False, kde=True,
+                          label=col, bins=30, color=colors[i], hist_kws={'edgecolor': 'black'},
+                          kde_kws={'linewidth': 2, 'linestyle': linestyle})
+
+    # plt.legend(loc='upper left', prop={'size': 12})
+    plt.legend(prop={'size': 12})
+
+    plt.xlabel(xlabel)
+    plt.title(title)
+
+    plt.savefig(f'./plot/kde.{output_tag:s}.png', dpi=300)
+    plt.show()
+
+
+def check_hourly_density_df(df: pd.DataFrame, columns=None, vmax=None, vmin=None, title='',
+                           limit_line=False, limit_value=1,
+                           output_tag: str = 'output_tag'):
+    """
+    applied project Sky_clearness_2023: to check if some SSR is larger than 1367 for example
+
+    easy to change to other plot for multi column df:
+    """
+
+    if columns is not None:
+        print(f'user specified columns')
+    else:
+        columns = df.columns
+
+    print(f'columns used: ')
+    print(columns)
+
+    n_col = len(columns)
+
+    if n_col > 4:
+        n_raw = 4
+    else:
+        n_raw = 2
+
+    fig_width = n_col * 2 + 1
+    fig_height = n_raw * 2 + 4
+
+    fig, axs = plt.subplots(nrows=n_raw, ncols=int(n_col/n_raw + 1),
+                            sharex=False, sharey=False,
+                            figsize=(fig_width, fig_height), dpi=300)
+    fig.subplots_adjust(left=0.1, right=0.9, bottom=0.10, top=0.9, wspace=0.1, hspace=0.1)
+    axs = axs.ravel()
+
+    print(f'fig created ')
+
+    for i in range(n_col):
+        column = columns[i]
+
+        print(f'plot {column:s}')
+
+        df0 = df[{column}]
+
+        # when compare PDF in a value range:
+        # such as Sky_Clearness 2023: for CI
+        if vmax is not None:
+            df0 = df0[df0 <= vmax]
+
+        if vmin is not None:
+            df0 = df0[df0 >= vmin]
+
+        df0['hour'] = df0.index.hour
+        ax = axs[i]
+
+        sns.histplot(data=df0, x='hour', y=column,
+                     bins=30, discrete=(True, False), log_scale=(False, False),
+                     # kde=True,
+                     # stat="density",
+                     cbar=True, cbar_kws=dict(shrink=.75),
+                     ax=ax,
+                     )
+
+        ax.set_xticks(np.arange(5, 20,), minor=False)
+
+        if limit_line:
+            plt.sca(ax)
+            plt.axhline(y=limit_value, color='r', linestyle='-', label=f'y={limit_value:2.1f}')
+
+        if vmax is not None:
+            ax.set_ylim(vmin, vmax)
+
+        # plt.grid(zorder=-1)
+        plt.legend()
+
+    plt.suptitle(title + f' in [{vmin:2.1f}-{vmax:2.1f}]')
+
+    plt.savefig(f'./plot/hourly.density.{output_tag:s}.png', dpi=300)
+    plt.show()
+
+    print(f'image saved')
+
+
+def plot_density_df(df: pd.DataFrame,
+                    title='',
+                    output_tag: str = 'output_tag'):
+
+    fig = plt.figure(figsize=(10, 16), dpi=300)
+
+    ax1 = fig.add_subplot(2, 1, 1)
+    ax1.scatter(range(df.size), df.values)
+    plt.grid()
+    plt.title(title)
+
+    ax2 = fig.add_subplot(2, 1, 2)
+    df.hist(bins=50, alpha=0.8, ax=ax2)
+    df.plot(kind='kde', secondary_y=True, ax=ax2)
+    plt.grid(zorder=-1)
+
+    plt.savefig(f'./plot/density.{output_tag:s}.png', dpi=300)
+    plt.show()
+
+    from scipy import stats
+    print(stats.normaltest(df.values))
+
+
 def plot_matrix_2d_df(
         df: pd.DataFrame = None,
         x_column: str = 'x', y_column: str = 'y',
@@ -3249,6 +3502,200 @@ def test_neu_test():
 
 
 # def plot_monthly_diurnal_maps(field: xr.DataArray, ax):
+def monthly_diurnal_boxplot_matrix_df(class_x: pd.DataFrame, class_y: pd.DataFrame, plot: bool = False,
+                                      output_figure: str = 'contingency.png'):
+    # the input DataFrames may have different index, so merge two classes with DataTimeIndex:
+    class_df = class_y.merge(class_x, left_index=True, right_index=True)
+
+    # y direction:
+    name_y = class_df.columns[0]
+    # x direction:
+    name_x = class_df.columns[1]
+
+    class_name_y = list(set(class_df.iloc[:, 0]))
+    class_name_x = list(set(class_df.iloc[:, 1]))
+
+    # get cross matrix
+    cross = np.zeros((len(class_name_y), len(class_name_x)))
+    for i in range(len(class_name_y)):
+        class_one = class_df.loc[class_df[name_y] == class_name_y[i]]
+        for j in range(len(class_name_x)):
+            class_cross = class_one.loc[class_one[name_x] == class_name_x[j]]
+            cross[i, j] = len(class_cross)
+            print(f'x = {j + 1:g}, y = {i + 1:g}, cross_size = {cross[i, j]:g}')
+
+    cross_df = pd.DataFrame(data=cross, index=class_name_y, columns=class_name_x).astype(int)
+
+    sig, expected = value_sig_neu_test_2d(contingency=cross_df.values, alpha=0.05, output_expected=True)
+
+    # output = {'sig': sig[::-1], 'expected': expected[::-1], 'observed': cross[::-1]}
+    output = {'sig': sig, 'expected': expected, 'observed': cross}
+
+    if plot:
+
+        fontsize = 14
+        # ----------------------------- plot -----------------------------
+        fig = plt.figure(figsize=(12.5, 8), dpi=300)
+        widths = [1, 3]
+        heights = [1, 2]
+        gridspec = fig.add_gridspec(ncols=2, nrows=2, width_ratios=widths, height_ratios=heights)
+        gridspec.update(wspace=0.08, hspace=0.15)  # set the spacing between axes.
+
+        # matrix:
+        ax = fig.add_subplot(gridspec[1, 1])
+        cbar_label = 'count'
+
+        plot_number = True  # it's better to plot number with occurrence
+        cbar_label = 'observed - expected (N. of day)'
+
+        # ======== the color matrix:
+
+        import math
+        df = cross_df
+
+        x_ticks_label = df.columns
+        y_ticks_label = [np.int(x) for x in class_name_y[::-1]]
+
+        # put the major ticks at the middle of each cell
+        x_ticks = np.arange(df.shape[1]) + 0.5
+        y_ticks = np.arange(df.shape[0]) + 0.5
+
+        # inverse y_ticks, since the plot will go from bottom to up when using ax.text
+        y_ticks = y_ticks[::-1]  # up to down
+
+        ax.set_xticks(x_ticks, minor=False)
+        ax.set_yticks(y_ticks[::-1], minor=False)
+
+        ax.set_xticklabels(x_ticks_label, minor=False, fontsize=fontsize)
+        ax.set_yticklabels(y_ticks_label, minor=False, fontsize=fontsize)
+
+        ax.tick_params(bottom=True, top=True, left=True, right=True)
+        ax.tick_params(labelbottom=True, labeltop=True, labelleft=True, labelright=False)
+
+        diff = cross_df.values - expected
+
+        vmin = -30
+        vmax = 30
+        vmin = np.int(diff.min())
+        vmax = np.int(diff.max())
+
+        from matplotlib.colors import TwoSlopeNorm
+        if vmin * vmax < 0:
+            vmax = np.max([vmin, vmax])
+
+            vmax = 12
+            vmin = vmax * -1
+
+            # to make uneven colorbar with zero in white
+            norm = TwoSlopeNorm(vmin=vmin, vcenter=0, vmax=vmax)
+
+        cmap = plt.cm.get_cmap('RdYlGn', vmax + 1).reversed()
+        cmap = plt.cm.get_cmap('PiYG', vmax + 1).reversed()
+
+        # cmap = plt.cm.get_cmap('coolwarm', df.max().max() + 1)
+        # plot the inverse color: since pcolor plot it from bottom to up:
+        cf = ax.pcolor(diff[::-1], cmap=cmap, norm=norm)
+
+        if vmin + vmax < vmax:
+            cbar_ticks = [x for x in range(vmin, vmax + 1, math.ceil((vmax - vmin) / 10))]
+        else:
+            cbar_ticks = [x for x in range(vmin, vmax, math.ceil((vmax - vmin) / 10))]
+
+        print(cbar_ticks)
+        if plot_number:
+            number = cross
+            for i in range(number.shape[1]):  # x direction
+                for j in range(number.shape[0]):  # y direction
+                    c = number[j, i]
+                    # notice to the order of
+                    if sig[j, i]:
+                        ax.text(x_ticks[i], y_ticks[j], f'{c:2.0f}', va='center', ha='center',
+                                weight='bold', fontsize=fontsize)
+                    else:
+                        ax.text(x_ticks[i], y_ticks[j], f'{c:2.0f}', va='center', ha='center',
+                                fontsize=fontsize)
+            # put cbar label
+            ax.yaxis.set_label_position("right")
+
+        # add colorbar
+        cb_ax = fig.add_axes([0.92, 0.11, 0.02, 0.48])
+        cb = plt.colorbar(cf, orientation='vertical', shrink=0.8, pad=0.05, cax=cb_ax,
+                          ax=ax, label=cbar_label, ticks=cbar_ticks)
+        loc = [x for x in cbar_ticks]
+        cb.set_ticks(loc)
+        cb.set_ticklabels(cbar_ticks)
+        cb.ax.tick_params(labelsize=fontsize)
+        cb.set_label(label=cbar_label, fontsize=fontsize)
+
+        # ======== the color matrix: end
+
+        ax.set_xlabel('SSR class', fontsize=fontsize)
+
+        # histogram in x direction:
+        ax = fig.add_subplot(gridspec[0, 1])
+        bars = class_name_x
+        data = class_df[name_x]
+        height = [len(data[data == x]) for x in class_name_x]
+
+        colors = ['darkgray', 'lightskyblue', 'firebrick', 'indianred', 'darkgray',
+                  'cornflowerblue', 'royalblue', 'darkgray', 'darkgray']
+
+        y_pos = np.arange(len(bars))
+        ax.bar(bars, height, align='center', color=colors)
+
+        plt.grid(axis='y')
+        ax.set_xlim(0.5, y_pos[-1] + 1.5)  # these limit is from test
+        # x_ticks = np.arange(len(class_name_x)) + 0.5
+
+        # ax.set_xticks([], minor=False)
+        ax.set_xticklabels([], minor=False, fontsize=fontsize)
+        ax.tick_params(axis='y', labelsize=fontsize)
+        ax.tick_params(axis='x', labelsize=fontsize)
+        ax.set_ylabel('day', fontsize=fontsize)
+        ax.set_title('SSR class', fontsize=fontsize)
+
+        # histogram in y direction:
+        ax = fig.add_subplot(gridspec[1, 0])
+        bars = class_name_y
+        data = class_df[name_y]
+        height = [len(data[data == x]) for x in class_name_y]
+
+        colors_olr = ['darkgray', 'royalblue', 'indianred', 'darkgray', 'indianred', 'firebrick', 'darkgray']
+        # colors_olr = ['darkgray', 'blueviolet', 'orange', 'darkgray', 'orange', 'darkorange', 'darkgray']
+
+        y_pos = np.arange(len(bars))
+        ax.barh(bars, height, align='center', color='orange')
+
+        plt.grid(axis='x')
+
+        ax.set_ylim(0.5, y_pos[-1] + 1.5)
+        # these limit is from test
+        ax.invert_xaxis()
+        ax.invert_yaxis()
+
+        ax.tick_params(axis='x', labelsize=fontsize)
+        ax.tick_params(axis='y', labelsize=fontsize)
+        ax.yaxis.tick_right()
+        ax.set_yticklabels([], minor=False, fontsize=fontsize)
+
+        ax.set_xlabel('day', fontsize=fontsize)
+        ax.set_ylabel(name_y, fontsize=fontsize)
+
+        # end of plotting:
+        # title = f'{name_x:s} vs {name_y:s}'
+        # if suptitle_add_word is not None:
+        #     title = title + ' ' + suptitle_add_word
+        #
+        # fig.suptitle(title)
+        #
+        # plt.savefig(output_plot, dpi=300)
+
+        plt.savefig(f'./plot/{output_figure:s}', dpi=300)
+        plt.show()
+
+        print(f'job done')
+
+    return output
 
 
 def contingency_2df_table(class_x: pd.DataFrame, class_y: pd.DataFrame, plot: bool = False,
@@ -3678,12 +4125,33 @@ def plot_12months_geo_map_significant(da: xr.DataArray, area: str, sig_dim: str,
     return fig, axs
 
 
+def select_day_time_df_da(hour1, hour2, da=None, df=None):
+
+    if da is not None:
+        return da.where(np.logical_and(da.time.dt.hour >= hour1, da.time.dt.hour <= hour2), drop=True)
+
+    if df is not None:
+        return df[df.index.hour.isin(range(hour1, hour2 + 1))]
+
+
 def select_area_from_str(da: xr.DataArray, area: str):
     lonlat = value_lonlatbox_from_area(area)
     da1 = da.where(np.logical_and(da.lon >= lonlat[0], da.lon < lonlat[1]), drop=True)
     da2 = da1.where(np.logical_and(da1.lat >= lonlat[2], da1.lat < lonlat[3]), drop=True)
 
     return da2
+
+
+def get_month_name_from_num(num):
+
+    import calendar
+    # print('Month Number:', num)
+
+    # get month name
+    # print('Month full name is:', calendar.month_name[num])
+    # print('Month short name is:', calendar.month_abbr[num])
+
+    return calendar.month_abbr[num]
 
 
 def plot_mjo_monthly_distribution(mjo: pd.DataFrame,
@@ -3735,6 +4203,261 @@ def plot_mjo_monthly_distribution(mjo: pd.DataFrame,
                 f'.png', dpi=300)
     plt.show()
     print(f'job done')
+
+
+def plot_diurnal_cycle_columns_in_df(df: pd.DataFrame, columns=None,
+                                     title=' ', linestyles=None,
+                                     output_tag='',
+                                     ylabel='', with_marker=False,
+                                     plot_errorbar=False,
+                                     vmin=None, vmax=None):
+    """
+    applied project Sky_clearness_2023:
+    :param months:
+    :param suptitle:
+    :param df:
+    :param columns:
+    :return:
+    """
+
+    if columns is not None:
+        print(f'user specified columns')
+    else:
+        columns = df.columns
+
+    print(f'columns used: ')
+    print(columns)
+
+    # ----------------------------- set parameters -----------------------------
+    # months = [11, 12, 1, 2, 3, 4]
+    colors = ['lightgrey', 'gray', 'lightcoral', 'firebrick', 'red', 'darkorange', 'gold', 'yellowgreen',
+              'green', 'cyan', 'deepskyblue', 'blue', 'darkviolet', 'magenta', 'pink']
+    markers = ['o', 'v', '^', '<', '1', 's', 'p', 'P', '*', '+', 'x', 'd', 'D']
+
+
+
+    # ----------------------------- set fig -----------------------------
+    fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(8, 6),
+                           facecolor='w', edgecolor='k', dpi=200)  # figsize=(w,h)
+    # ----------------------------- plotting -----------------------------
+    for i in range(len(columns)):
+        column = columns[i]
+        print(column)
+
+        df1 = df[{column}]
+        # when compare PDF in a value range:
+        # such as Sky_Clearness 2023: for CI
+        if vmax is not None:
+            df1 = df1[df1 <= vmax]
+
+        if vmin is not None:
+            df1 = df1[df1 >= vmin]
+
+        df0 = drop_nan_infinity(df1)
+
+        mean = df0.groupby(df0.index.hour).mean()[{column}]
+        std = df0.groupby(df0.index.hour).std()[{column}]
+
+        x = mean.index.values
+        y = mean[column].values
+        y_err = std[column].values
+
+        if plot_errorbar:
+            capsize = 5
+        else:
+            capsize = 0
+
+        if linestyles is not None:
+            linestyle = linestyles[i]
+        else:
+            linestyle = '-'
+
+        if with_marker:
+            plt.errorbar(x, y, yerr=y_err, marker=markers[i], color=colors[i],
+                         capsize=capsize, capthick=1,  # error bar format.
+                         label=f'{column:s}', linestyle=linestyle)
+        else:
+            plt.errorbar(x, y, yerr=y_err, color=colors[i],
+                         capsize=capsize, capthick=1,  # error bar format.
+                         label = f'{column:s}', linestyle = linestyle)
+
+        plt.ylim(vmin, vmax)
+        # plt.ylim(0., 0.8)
+        # plt.ylim(400, 1000)
+        # plt.ylim(200, 600)
+
+        x_stick_label = [f'{i:g}:00' for i in x]
+
+        plt.xticks(ticks=x, labels=x_stick_label)
+
+        # plt.legend(loc='upper right', fontsize=8)
+        plt.legend(fontsize=8)
+        plt.xlabel(f'Hour')
+        plt.ylabel(ylabel)
+
+    plt.title(title + ' (errorbar = std)')
+    plt.savefig(f'./plot/diurnal_cycle_single_fig.{output_tag:s}.png', dpi=300)
+    plt.show()
+    print(f'got the plot')
+
+
+def plot_annual_cycle_columns_in_df(df: pd.DataFrame, columns=None,
+                                    title=' ', linestyles=None,
+                                    output_tag='',
+                                    ylabel='', with_marker=False,
+                                    plot_errorbar=False,
+                                    vmin=None, vmax=None):
+    """
+    applied project Sky_clearness_2023:
+    :param months:
+    :param suptitle:
+    :param df:
+    :param columns:
+    :return:
+    """
+
+    if columns is not None:
+        print(f'user specified columns')
+    else:
+        columns = df.columns
+
+    print(f'columns used: ')
+    print(columns)
+
+    # ----------------------------- set parameters -----------------------------
+    # months = [11, 12, 1, 2, 3, 4]
+    colors = ['lightgrey', 'gray', 'lightcoral', 'firebrick', 'red', 'darkorange', 'gold', 'yellowgreen',
+              'green', 'cyan', 'deepskyblue', 'blue', 'darkviolet', 'magenta', 'pink']
+    markers = ['o', 'v', '^', '<', '1', 's', 'p', 'P', '*', '+', 'x', 'd', 'D']
+
+
+
+    # ----------------------------- set fig -----------------------------
+    fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(8, 6),
+                           facecolor='w', edgecolor='k', dpi=200)  # figsize=(w,h)
+    # ----------------------------- plotting -----------------------------
+    for i in range(len(columns)):
+        column = columns[i]
+        print(column)
+
+        df1 = df[{column}]
+        # when compare PDF in a value range:
+        # such as Sky_Clearness 2023: for CI
+        if vmax is not None:
+            df1 = df1[df1 <= vmax]
+
+        if vmin is not None:
+            df1 = df1[df1 >= vmin]
+
+        df0 = drop_nan_infinity(df1)
+
+        mean = df0.groupby(df0.index.month).mean()[{column}]
+        std = df0.groupby(df0.index.month).std()[{column}]
+
+        x = mean.index.values
+        y = mean[column].values
+        y_err = std[column].values
+
+        if plot_errorbar:
+            capsize = 5
+        else:
+            capsize = 0
+
+        if linestyles is not None:
+            linestyle = linestyles[i]
+        else:
+            linestyle = '-'
+
+        if with_marker:
+            plt.errorbar(x, y, yerr=y_err, marker=markers[i], color=colors[i],
+                         capsize=capsize, capthick=1,  # error bar format.
+                         label=f'{column:s}', linestyle=linestyle)
+        else:
+            plt.errorbar(x, y, yerr=y_err, color=colors[i],
+                         capsize=capsize, capthick=1,  # error bar format.
+                         label = f'{column:s}', linestyle = linestyle)
+
+        plt.ylim(vmin, vmax)
+        # plt.ylim(0.3, 0.8)
+        # plt.ylim(400, 1000)
+        # plt.ylim(200, 600)
+
+        x_stick_label = [get_month_name_from_num(i) for i in x]
+
+        plt.xticks(ticks=x, labels=x_stick_label)
+
+        # plt.legend(loc='upper right', fontsize=8)
+        plt.legend(fontsize=8)
+        plt.xlabel(f'Month')
+        plt.ylabel(ylabel)
+
+    plt.title(title + ' (errorbar = std)')
+    plt.savefig(f'./plot/monthly_cycle_single_fig.{output_tag:s}.png', dpi=300)
+    plt.show()
+    print(f'got the plot')
+
+
+def plot_monthly_diurnal_single_fig_df(df: pd.DataFrame, column=None, suptitle=' ',
+                                       months=None, output_tag='',
+                                       ylabel='', with_marker=False,
+                                       plot_errorbar=False,
+                                       vmin=None, vmax=None):
+    """
+    plot hourly curves by /month/ for the columns in list
+    :param months:
+    :param suptitle:
+    :param df:
+    :param columns:
+    :return:
+    """
+
+    if months is None:  # 👍
+        months = [12, 1, 2,]
+
+    # ----------------------------- set parameters -----------------------------
+    # months = [11, 12, 1, 2, 3, 4]
+    colors = ['lightgrey', 'gray', 'lightcoral', 'firebrick', 'red', 'darkorange', 'gold', 'yellowgreen',
+              'green', 'cyan', 'deepskyblue', 'blue', 'darkviolet', 'magenta', 'pink']
+    markers = ['o', 'v', '^', '<', '1', 's', 'p', 'P', '*', '+', 'x', 'd', 'D']
+
+    # ----------------------------- set fig -----------------------------
+    fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(8, 6),
+                           facecolor='w', edgecolor='k', dpi=200)  # figsize=(w,h)
+    # ----------------------------- plotting -----------------------------
+    for mon in months:
+        data_slice = df[df.index.month == mon]
+
+        mean = data_slice.groupby(data_slice.index.hour).mean()[{column}]
+        std = data_slice.groupby(data_slice.index.hour).std()[{column}]
+
+        plt.plot(mean.index, mean)
+
+        x = mean.index.values
+        y = mean[column].values
+        y_err = std[column].values
+
+        if plot_errorbar:
+            capsize = 5
+        else:
+            capsize = 0
+
+        if with_marker:
+            plt.errorbar(x, y, yerr=y_err, marker=markers[mon], color=colors[mon],
+                         capsize=capsize, capthick=1,  # error bar format.
+                         label=f'{calendar.month_abbr[mon]:s}')
+        else:
+            plt.errorbar(x, y, yerr=y_err, color=colors[mon],
+                         capsize=capsize, capthick=1,  # error bar format.
+                         label=f'{calendar.month_abbr[mon]:s}')
+
+        plt.legend(loc='upper right', fontsize=8)
+        plt.xlabel(f'Hour')
+        plt.ylabel(ylabel)
+
+    plt.suptitle(suptitle + ' (errorbar = std)')
+    plt.savefig(f'./plot/monthly_diurnal_cycle.{output_tag:s}.png', dpi=300)
+    plt.show()
+    print(f'got the plot')
 
 
 def plot_mjo_phase(mjo_phase: pd.DataFrame, olr: xr.DataArray, high_amplitude: bool, month: str,
@@ -3817,7 +4540,8 @@ def plot_mjo_phase(mjo_phase: pd.DataFrame, olr: xr.DataArray, high_amplitude: b
     print(f'got plot')
 
 
-def plot_hourly_curve_by_month(df: pd.DataFrame, columns: list, suptitle=' ', months=None):
+def plot_hourly_curve_by_month(df: pd.DataFrame, columns: list, suptitle=' ', months=None,
+                               vmin=None, vmax=None):
     """
     plot hourly curves by /month/ for the columns in list
     :param months:
@@ -3838,9 +4562,9 @@ def plot_hourly_curve_by_month(df: pd.DataFrame, columns: list, suptitle=' ', mo
     # ----------------------------- set fig -----------------------------
     nrows = len(months)
 
-    fig, axs = plt.subplots(nrows=nrows, ncols=1, figsize=(16, 16),
+    fig, axs = plt.subplots(nrows=nrows, ncols=1, figsize=(10, 15),
                             facecolor='w', edgecolor='k', dpi=200)  # figsize=(w,h)
-    fig.subplots_adjust(left=0.05, right=0.95, bottom=0.05, hspace=0.4, top=0.8, wspace=0.05)
+    fig.subplots_adjust(left=0.05, right=0.95, bottom=0.05, hspace=0.4, top=0.9, wspace=0.05)
 
     axs = axs.ravel()
     # ----------------------------- plotting -----------------------------
@@ -3863,28 +4587,32 @@ def plot_hourly_curve_by_month(df: pd.DataFrame, columns: list, suptitle=' ', mo
             # if input data is hourly, reform the fig axis
             nday = len(set(data_slice.index.day))
 
-            if len(data_slice) > 31:
-                custom_ticks = range(11, len(data_slice), 24)
-                custom_ticks_labels = range(1, nday + 1)
-            else:
-                custom_ticks = x
-                custom_ticks_labels = [y + 1 for y in custom_ticks]
-
-            axs[i].set_xticks(custom_ticks)
-            axs[i].set_xticklabels(custom_ticks_labels)
+            # if len(data_slice) > 31:
+            #     custom_ticks = range(11, len(data_slice), 24)
+            #     custom_ticks_labels = range(1, nday + 1)
+            # else:
+            #     custom_ticks = x
+            #     custom_ticks_labels = [y + 1 for y in custom_ticks]
+            #
+            # axs[i].set_xticks(custom_ticks)
+            # axs[i].set_xticklabels(custom_ticks_labels)
 
             axs[i].set_xlim(0, len(data_slice) * 1.2)
+
+            if vmin is not None:
+                axs[i].set_ylim(vmin, vmax)
 
             # axs[i].xaxis.set_ticks_position('top')
             # axs[i].xaxis.set_ticks_position('bottom')
 
             plt.legend(loc='upper right', fontsize=8)
-            plt.xlabel(f'day')
+            plt.xlabel(f'num of data point')
             plt.ylabel(r'$SSR\ (W/m^2)$')
             axs[i].text(0.5, 0.95, data_slice.index[0].month_name(), fontsize=20,
                         horizontalalignment='right', verticalalignment='top', transform=axs[i].transAxes)
 
     plt.suptitle(suptitle)
+    plt.savefig(f'./plot/hourly_curve_by_month.{columns[v]:s}.png', dpi=300)
     plt.show()
     print(f'got the plot')
 
@@ -5139,8 +5867,11 @@ def plot_hourly_boxplot_ds_by(list_da: list, list_var_name: list, by: str = 'Mon
     return fig
 
 
-def plot_hourly_boxplot_by(df: pd.DataFrame, columns: list, by: str):
+def plot_hourly_boxplot_by(df: pd.DataFrame, columns: list, by: str,
+                           vmin = None, vmax = None, title='', ylabel='',
+                           output_tag: str = None):
     """
+    applied project Sky_clearness_2023:
     plot hourly box plot by "Month" or "Season"
     :param df:
     :param columns:
@@ -5149,8 +5880,8 @@ def plot_hourly_boxplot_by(df: pd.DataFrame, columns: list, by: str):
     """
 
     if by == 'Month':
-        nrow = 7
-        ncol = 1
+        nrow = 4
+        ncol = 3
     if by is None:
         nrow = 1
         ncol = 1
@@ -5158,12 +5889,14 @@ def plot_hourly_boxplot_by(df: pd.DataFrame, columns: list, by: str):
     # n_plot = nrow * ncol
 
     fig, axs = plt.subplots(nrows=nrow, ncols=ncol,
-                            figsize=(10, 19), facecolor='w', edgecolor='k', dpi=200)  # figsize=(w,h)
+                            figsize=(18, 13), facecolor='w', edgecolor='k', dpi=200)  # figsize=(w,h)
+    fig.subplots_adjust(left=0.1, right=0.9, bottom=0.05, hspace=0.4, top=0.90, wspace=0.2)
 
     if by == 'Month':
         axs = axs.ravel()
 
-    months = [11, 12, 1, 2, 3, 4, 4]
+    # months = [11, 12, 1, 2, 3, 4, 4]
+    months = list(range(1, 13))
     for i in range(len(months)):
         if by == 'Month':
             # plt.sca(axs[i])  # active this subplot
@@ -5185,10 +5918,13 @@ def plot_hourly_boxplot_by(df: pd.DataFrame, columns: list, by: str):
             var['var'] = [columns[col] for _ in range(len(data_slice))]
             all_var = all_var.append(var)
 
+        ax.set_xlim(4, 20)
         sns.boxplot(x='Hour', y='target', hue='var', data=all_var, ax=ax, showmeans=True)
 
-        ax.set_xlim(5, 20)
-        # ax.set_ylim(0, 1.1)
+
+        if vmax is not None:
+            ax.set_ylim(vmin, vmax)
+
         if by is not None:
             ax.set_title(f'{by:s} = {months[i]:g}')
 
@@ -5204,15 +5940,17 @@ def plot_hourly_boxplot_by(df: pd.DataFrame, columns: list, by: str):
                    loc="upper right", fontsize=18)
 
         plt.ylabel(f'distribution')
-        plt.title(f'SSR distribution between 5AM - 8PM', fontsize=18)
+        plt.suptitle(title, fontsize=18)
         ax.set_xlabel(f'Hour', fontsize=18)
-        ax.set_ylabel(f'SSR ($W/m^2$)', fontsize=18)
+        ax.set_ylabel(ylabel, fontsize=18)
         ax.tick_params(labelsize=16)
 
         ax.set_axisbelow(True)
         ax.yaxis.grid(color='gray', linestyle='dashed')
 
     print(f'save/show the plot ...')
+
+    plt.savefig(f'./plot/hourly_boxplot_by{by:s}.{output_tag:s}.png')
 
     plt.show()
 
@@ -6290,6 +7028,13 @@ def convert_da_to_std_dim_coords_names(da):
                           dims=list(new_dims_data.values()),
                           coords=coords_param,
                           name=da.name, attrs=da.attrs)
+
+    # new_da = xr.DataArray(da.values.reshape(-1, 1, 1),
+    #                       dims=list(new_dims_data.values()),
+    #                       coords=coords_param,
+    #                       name=da.name, attrs=da.attrs)
+
+
     # if max_coords_ndim == 2:
     #     new_da = xr.DataArray(da.values,
     #                           dims=list(new_dims.values()),
@@ -7205,6 +7950,8 @@ def value_clearsky_radiation(
         lat: np.ndarray,
         model: str = 'climatology',
         show: bool = 1):
+    import pvlib
+    from pvlib import clearsky, atmosphere, solarposition
     from pvlib.location import Location
 
     # ----------------------------- definition -----------------------------
