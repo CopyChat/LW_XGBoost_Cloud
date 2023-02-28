@@ -737,8 +737,27 @@ def multi_year_daily_mean(var: xr.DataArray):
     return ydaymean
 
 
-def check_missing_da_df(start: str, end: str, freq: str, data: xr.DataArray, plot: bool = True):
+def get_month_name_from_num(num):
     """
+    applied project: Sky_clearness
+    :param num:
+    :return:
+    """
+
+    import calendar
+    # print('Month Number:', num)
+
+    # get month name
+    # print('Month full name is:', calendar.month_name[num])
+    # print('Month short name is:', calendar.month_abbr[num])
+
+    return calendar.month_abbr[num]
+
+
+def check_missing_da_df(start: str, end: str, freq: str, data: xr.DataArray, plot: bool = True,
+                        output_plot_tag=None, show_fig=True):
+    """
+    applied project Sky_clearness_2023:
     to find the missing data number in months and in hours
     :param start:
     :param end:
@@ -747,6 +766,7 @@ def check_missing_da_df(start: str, end: str, freq: str, data: xr.DataArray, plo
     :param plot:
     :return:
     """
+
 
     # Alias Description
     # B business day frequency
@@ -775,9 +795,7 @@ def check_missing_da_df(start: str, end: str, freq: str, data: xr.DataArray, plo
 
     matrix_mon_hour = np.zeros((12, 24))
     if missing_num:
-
-        print(f'find the missing values')
-
+        # find the missing values:
         A = total_time_steps.strftime('%Y-%m-%d %H:%M')
         if isinstance(data, xr.DataArray):
             B = data.time.dt.strftime('%Y-%m-%d %H:%M')
@@ -785,34 +803,55 @@ def check_missing_da_df(start: str, end: str, freq: str, data: xr.DataArray, plo
             B = data.index.strftime('%Y-%m-%d %H:%M')
         C = [i for i in A if i not in B]
 
-        print(f'to find mon hour matrix')
         missing_datetime = pd.to_datetime(C)
         for i in range(1, 13):
-            # print(f'{i:g}\t')    # month
             monthly = missing_datetime[missing_datetime.month == i]
             for h in range(0, 24):
-                # print(f'{h:g}\t')
                 missing_hours = list(monthly.groupby(monthly.hour).keys())
 
                 if h in missing_hours:
                     matrix_mon_hour[i - 1, h] = monthly.groupby(monthly.hour)[h].size
 
-                    print(f'mont={i:g}, hour={h:g}: {matrix_mon_hour[i-1,h]:g}')
-
     if plot:
-
-        print(f'start to plot')
-
+        fig = plt.figure(figsize=(8, 5), dpi=300)
         im = plt.imshow(matrix_mon_hour, cmap="OrRd")
         plt.colorbar(im, orientation='horizontal', shrink=0.8, pad=0.2,
                      label='num of missing values')
 
         plt.xlabel('hour')
-        plt.ylabel('month - 1')
+        plt.ylabel('month')
 
-        plt.title(f'num of missing data in month and hour @ {freq:s}')
+        plt.title(f'missing data @{freq:s}'
+                  f' ({start:s} - {end:s})\n'
+                  f'{output_plot_tag:s}')
 
-        plt.show()
+        ax = plt.gca();
+        # -----------
+        # put the major ticks at the middle of each cell
+        x_ticks = np.arange(24)
+        y_ticks = np.arange(12)
+
+        x_ticks_label = np.arange(24)
+        y_ticks_label = np.arange(12) + 1
+        y_ticks_label = [get_month_name_from_num(x) for x in y_ticks_label]
+
+        # Major ticks
+        ax.set_xticks(x_ticks)
+        ax.set_yticks(y_ticks)
+
+        ax.set_xticklabels(x_ticks_label)
+        ax.set_yticklabels(y_ticks_label)
+
+        # add grid: # Minor ticks first
+        ax.set_xticks(np.arange(-.5, 24, 1), minor=True)
+        ax.set_yticks(np.arange(-.5, 12, 1), minor=True)
+        # Gridlines based on minor ticks
+        ax.grid(which='minor', color='gray', linestyle='-', linewidth=0.5)
+
+        if output_plot_tag is not None:
+            plt.savefig(f'./plot/missing.{output_plot_tag:s}.png', dpi=300)
+        if show_fig:
+            plt.show()
 
     return matrix_mon_hour
 
