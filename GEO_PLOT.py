@@ -636,7 +636,7 @@ def get_color(n):
 
     if n <= 6:
         colors = ['red', 'darkorange',
-                  'green', 'cyan', 'blue', 'darkviolet',]
+                  'green', 'cyan', 'blue', 'darkviolet', ]
     else:
         colors = ['lightgrey', 'gray', 'lightcoral', 'firebrick', 'red', 'darkorange', 'gold', 'yellowgreen',
                   'green', 'cyan', 'deepskyblue', 'blue', 'darkviolet', 'magenta', 'pink']
@@ -767,7 +767,6 @@ def check_missing_da_df(start: str, end: str, freq: str, data: xr.DataArray, plo
     :param plot:
     :return:
     """
-
 
     # Alias Description
     # B business day frequency
@@ -901,9 +900,9 @@ def plot_violin_boxen_df_1D(df: pd.DataFrame,
                             x: str = 'x', x_unit: str = None,
                             y: str = 'y', y_unit: str = None, ymin=0, ymax=100,
                             plot_type: str = 'violin',
-                            scale = 'area',
+                            scale='area',
                             x_label: str = None, y_label: str = None,
-                            x_ticks_labels = None,
+                            x_ticks_labels=None,
                             split=False,
                             add_number=False,
                             hue: str = 0,
@@ -1014,7 +1013,6 @@ def plot_violin_boxen_df_1D(df: pd.DataFrame,
 
 
 def convert_cf_to_octas(array_1D: np.ndarray):
-
     # intervals from Utrillas 2022 paper
     intervals = np.array([0.00001, 18.75, 31.25, 43.75, 56.25, 68.75, 81.25, 100, 110]) / 100
     # this is always increasing
@@ -2694,7 +2692,6 @@ def value_cbar_ticks_from_vmax_vmin(vmax, vmin, num_bin):
     cbar_ticks = np.round([x for x in np.arange(vmin, vmax * (1 + 1 / 10 / num_bin), interval)], np.abs(mi - 1))
     print(cbar_ticks)
 
-
     #
     # from matplotlib.colors import TwoSlopeNorm
     # if bias:
@@ -2762,7 +2759,6 @@ def plot_join_heatmap_boxplot(da: xr.DataArray):
 
 
 def drop_nan_infinity(df):
-
     df_filter = df.isin([np.nan, np.inf, -np.inf])
     # Mask df with the filter
     df = df[~df_filter]
@@ -2773,7 +2769,6 @@ def drop_nan_infinity(df):
 
 
 def check_missing_df_da_interval(df, vmin=None, vmax=None, output_tag='', freq='H', columns=''):
-
     for i in range(len(columns)):
         col = columns[i]
 
@@ -2786,20 +2781,18 @@ def check_missing_df_da_interval(df, vmin=None, vmax=None, output_tag='', freq='
             df = df.dropna()
 
             check_missing_da_df(start=str(df.index.date[0]), end=str(df.index.date[-1]),
-                                freq=freq, data=df, output_plot_tag=output_tag+col)
+                                freq=freq, data=df, output_plot_tag=output_tag + col)
 
 
 def plot_power_spectral_density_multi_columns_df(df: pd.DataFrame, columns: list = ['', ], title='',
-                              linestyles=None,
-                              vmax=None, vmin=None, check_missing=True,
-                              xlabel='', output_tag: str = ''):
+                                                 linestyles=None,
+                                                 vmax=None, vmin=None, check_missing=True,
+                                                 xlabel='', output_tag: str = ''):
     """
     applied project Sky_clearness_2023:
     linestyles is a list of linestyle that could be applied by orders in the plot to group the lines.
     """
     from scipy import signal
-
-
 
     colors = get_color(len(columns))
 
@@ -2836,7 +2829,7 @@ def plot_power_spectral_density_multi_columns_df(df: pd.DataFrame, columns: list
         fs = 1000.0  # 1 kHz sampling frequency
         (f, S) = signal.welch(signal_data, fs=3600, nperseg=3600)
 
-        plt.semilogy(f, S, label=col, color=colors[i], linewidth=2, linestyle=linestyle,)
+        plt.semilogy(f, S, label=col, color=colors[i], linewidth=2, linestyle=linestyle, )
 
         plt.xlim([0, 100])
 
@@ -2904,8 +2897,8 @@ def plot_pdf_multi_columns_df(df: pd.DataFrame, columns: list = ['', ], title=''
 
 
 def check_hourly_density_df(df: pd.DataFrame, columns=None, vmax=None, vmin=None, title='',
-                           limit_line=False, limit_value=1,
-                           output_tag: str = 'output_tag'):
+                            limit_line=False, limit_value=1,
+                            output_tag: str = 'output_tag'):
     """
     applied project Sky_clearness_2023: to check if some SSR is larger than 1367 for example
 
@@ -2930,7 +2923,7 @@ def check_hourly_density_df(df: pd.DataFrame, columns=None, vmax=None, vmin=None
     fig_width = n_col * 2 + 1
     fig_height = n_raw * 2 + 4
 
-    fig, axs = plt.subplots(nrows=n_raw, ncols=int(n_col/n_raw + 1),
+    fig, axs = plt.subplots(nrows=n_raw, ncols=int(n_col / n_raw + 1),
                             sharex=False, sharey=False,
                             figsize=(fig_width, fig_height), dpi=300)
     fig.subplots_adjust(left=0.1, right=0.9, bottom=0.10, top=0.9, wspace=0.1, hspace=0.1)
@@ -2964,7 +2957,7 @@ def check_hourly_density_df(df: pd.DataFrame, columns=None, vmax=None, vmin=None
                      ax=ax,
                      )
 
-        ax.set_xticks(np.arange(5, 20,), minor=False)
+        ax.set_xticks(np.arange(5, 20, ), minor=False)
 
         if limit_line:
             plt.sca(ax)
@@ -2987,7 +2980,6 @@ def check_hourly_density_df(df: pd.DataFrame, columns=None, vmax=None, vmin=None
 def plot_density_df(df: pd.DataFrame,
                     title='',
                     output_tag: str = 'output_tag'):
-
     fig = plt.figure(figsize=(10, 16), dpi=300)
 
     ax1 = fig.add_subplot(2, 1, 1)
@@ -3018,7 +3010,6 @@ def plot_matrix_2d_df(
         statistics: bool = 1,
         occurrence: bool = 1,
         suptitle_add_word: str = ""):
-
     # definition:
     class_names_x: list = list(set(df[x_column].sort_values().values))
     class_names_y: list = list(set(df[y_column].sort_values().values))
@@ -3283,7 +3274,7 @@ def plot_matrix_class_vs_class_field(class_x: pd.DataFrame,
                 ax=ax)
             if sig[y, x]:
                 ax.text(0.98, 0.97, f'{observed[y, x]:g}'
-                                    # f'',
+                # f'',
                                     f'({np.round(expected[y, x]):g})',
                         fontsize=10, weight='bold',
                         horizontalalignment='right', verticalalignment='top', transform=ax.transAxes)
@@ -4126,7 +4117,6 @@ def plot_12months_geo_map_significant(da: xr.DataArray, area: str, sig_dim: str,
 
 
 def select_day_time_df_da(hour1, hour2, da=None, df=None):
-
     if da is not None:
         return da.where(np.logical_and(da.time.dt.hour >= hour1, da.time.dt.hour <= hour2), drop=True)
 
@@ -4143,7 +4133,6 @@ def select_area_from_str(da: xr.DataArray, area: str):
 
 
 def get_month_name_from_num(num):
-
     import calendar
     # print('Month Number:', num)
 
@@ -4205,10 +4194,201 @@ def plot_mjo_monthly_distribution(mjo: pd.DataFrame,
     print(f'job done')
 
 
+def plot_annual_diurnal_cycle_columns_in_df(df: pd.DataFrame, columns=None,
+                                            title=' ',
+                                            linestyles=None,
+                                            output_tag='',
+                                            count_bar_plot=True,
+                                            colors=None, markers=None,
+                                            ylabel='',
+                                            with_marker=True,
+                                            plot_errorbar=False,
+                                            vmin=None, vmax=None):
+    """
+    applied project LW_XGBoost_Cloud, Final figure
+    :param months:
+    :param suptitle:
+    :param df:
+    :param columns:
+    :return:
+    """
+
+    # ----------------------------- set parameters -----------------------------
+
+    if columns is not None:
+        print(f'user specified columns')
+    else:
+        columns = df.columns
+
+    print(f'columns used: \t')
+    print(columns)
+
+    # ----------------------------------- color and markers ------------------------------
+    if colors is None:
+        colors = ['lightgrey', 'gray', 'lightcoral', 'firebrick', 'red', 'darkorange', 'gold', 'yellowgreen',
+                  'green', 'cyan', 'deepskyblue', 'blue', 'darkviolet', 'magenta', 'pink']
+
+        if len(columns) < 5:
+            colors = ['blue', 'red', 'green', 'black']
+
+    if markers is None:
+        markers = ['o', 'v', '^', '<', '1', 's', 'p', 'P', '*', '+', 'x', 'd', 'D']
+        if len(columns) < 5:
+            markers = ['o', 'v', 's', '*', '+', 'x', 'd', 'D']
+    # ----------------------------- set fig -----------------------------
+    alpha_bar_plot = 0.7
+    fontsize = 12
+
+    nrows = 2 + 2 * (int(count_bar_plot))
+
+    fig, axes = plt.subplots(nrows=nrows, ncols=1, figsize=(8, 3 * nrows),
+                             facecolor='w', edgecolor='k', dpi=300)  # figsize=(w,h)
+    fig.subplots_adjust(left=0.15, right=0.9, bottom=0.1, top=0.95, wspace=0.05, hspace=0.3)
+
+    axes = axes.flatten()
+
+    # ----------------------------- plotting -----------------------------
+    # diurnal cycle:
+    num_plot = 0
+    ax = set_active_axis(axs=axes, n=num_plot)
+    for i in range(len(columns)):
+        column = columns[i]
+
+        df1 = df[{column}]
+
+        # if vmax is not None:
+        #     df1 = df1[df1 <= vmax]
+        #
+        # if vmin is not None:
+        #     df1 = df1[df1 >= vmin]
+
+        df0 = drop_nan_infinity(df1)
+
+        mean = df0.groupby(df0.index.hour).mean()[{column}]
+        std = df0.groupby(df0.index.hour).std()[{column}]
+
+        x = mean.index.values
+        y = mean[column].values
+        y_err = std[column].values
+
+        if plot_errorbar:
+            capsize = 5
+        else:
+            capsize = 0
+
+        if linestyles is not None:
+            linestyle = linestyles[i]
+        else:
+            linestyle = '-'
+
+        if with_marker:
+            plt.errorbar(x, y, yerr=y_err, marker=markers[i], color=colors[i],
+                         capsize=capsize, capthick=1,  # error bar format.
+                         label=f'{column:s}', linestyle=linestyle)
+        else:
+            plt.errorbar(x, y, yerr=y_err, color=colors[i],
+                         capsize=capsize, capthick=1,  # error bar format.
+                         label=f'{column:s}', linestyle=linestyle)
+
+        print(column, x, y)
+
+        x_stick_label = [f'{i:g}' for i in x]
+        plt.xticks(ticks=x, labels=x_stick_label, fontsize=fontsize)
+        plt.yticks(fontsize=fontsize)
+
+        # plt.legend(loc='upper right', fontsize=8)
+        plt.legend(fontsize=fontsize)
+        plt.xlabel(f'Hour', fontsize=fontsize)
+        plt.ylabel(ylabel, fontsize=fontsize)
+
+        if len(columns) == 1:
+            plt.ylim(vmin, vmax)
+
+    if count_bar_plot:
+        num_plot += 1
+        # count bar plot hourly
+        ax = set_active_axis(axs=axes, n=num_plot)
+        df1 = df[columns]
+        count = df1.groupby(df.index.hour).count()
+        count.plot(kind='bar', color=colors, ax=ax, grid=True, alpha=alpha_bar_plot, fontsize=fontsize)
+        plt.xticks(ticks=[xx - np.min(x) for xx in x], labels=x_stick_label, rotation=0, fontsize=fontsize)
+        plt.legend(fontsize=fontsize)
+        plt.ylabel('data count', fontsize=fontsize)
+        plt.xlabel('Hour', fontsize=fontsize)
+
+    # change color if only one variable to plot
+    if len(columns) == 1:
+        colors = ['red']
+    # annual cycle:
+    num_plot += 1
+    ax = set_active_axis(axs=axes, n=num_plot)
+    for i in range(len(columns)):
+        column = columns[i]
+        df1 = df[{column}]
+        df0 = drop_nan_infinity(df1)
+
+        mean = df0.groupby(df0.index.month).mean()[{column}]
+        std = df0.groupby(df0.index.month).std()[{column}]
+
+        x = mean.index.values
+        y = mean[column].values
+        y_err = std[column].values
+
+        if plot_errorbar:
+            capsize = 5
+        else:
+            capsize = 0
+
+        if linestyles is not None:
+            linestyle = linestyles[i]
+        else:
+            linestyle = '-'
+
+        if with_marker:
+            plt.errorbar(x, y, yerr=y_err, marker=markers[i], color=colors[i],
+                         capsize=capsize, capthick=1,  # error bar format.
+                         label=f'{column:s}', linestyle=linestyle)
+        else:
+            plt.errorbar(x, y, yerr=y_err, color=colors[i],
+                         capsize=capsize, capthick=1,  # error bar format.
+                         label=f'{column:s}', linestyle=linestyle)
+
+        print(column, x, y)
+
+        if len(columns) == 1:
+            plt.ylim(vmin, vmax)
+
+        x_stick_label = [get_month_name_from_num(i) for i in x]
+        plt.xticks(ticks=x, labels=x_stick_label, fontsize=fontsize)
+        plt.yticks(fontsize=fontsize)
+
+        # plt.legend(loc='upper right', fontsize=8)
+        plt.legend(fontsize=fontsize)
+        plt.xlabel(f'Month', fontsize=fontsize)
+        plt.ylabel(ylabel, fontsize=fontsize)
+
+    if count_bar_plot:
+        num_plot += 1
+        # count bar plot monthly
+        ax = set_active_axis(axs=axes, n=num_plot)
+        df1 = df[columns]
+        count = df1.groupby(df.index.month).count()
+        count.plot(kind='bar', color=colors, ax=ax, grid=True, alpha=alpha_bar_plot, fontsize=fontsize)
+        x_stick_label = [get_month_name_from_num(i) for i in x]
+        plt.xticks(ticks=range(0, 12), labels=x_stick_label, rotation=0, fontsize=fontsize)
+        plt.legend(fontsize=fontsize)
+        plt.ylabel('data count', fontsize=fontsize)
+        plt.xlabel('Month', fontsize=fontsize)
+
+    plt.savefig(f'./plot/annual_diurnal_cycle_with_countbar_{int(count_bar_plot):g}.{output_tag:s}.png', dpi=300)
+    plt.show()
+    print(f'got the plot')
+
+
 def plot_diurnal_cycle_columns_in_df(df: pd.DataFrame, columns=None,
                                      title=' ', linestyles=None,
                                      output_tag='',
-                                     ylabel='', with_marker=False,
+                                     ylabel='', with_marker=True,
                                      plot_errorbar=False,
                                      vmin=None, vmax=None):
     """
@@ -4225,7 +4405,7 @@ def plot_diurnal_cycle_columns_in_df(df: pd.DataFrame, columns=None,
     else:
         columns = df.columns
 
-    print(f'columns used: ')
+    print(f'columns used: \t')
     print(columns)
 
     # ----------------------------- set parameters -----------------------------
@@ -4234,7 +4414,9 @@ def plot_diurnal_cycle_columns_in_df(df: pd.DataFrame, columns=None,
               'green', 'cyan', 'deepskyblue', 'blue', 'darkviolet', 'magenta', 'pink']
     markers = ['o', 'v', '^', '<', '1', 's', 'p', 'P', '*', '+', 'x', 'd', 'D']
 
-
+    if len(columns) < 5:
+        colors = ['red', 'blue', 'green', 'black']
+        markers = ['o', 'v', 's', '*', '+', 'x', 'd', 'D']
 
     # ----------------------------- set fig -----------------------------
     fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(8, 6),
@@ -4279,7 +4461,7 @@ def plot_diurnal_cycle_columns_in_df(df: pd.DataFrame, columns=None,
         else:
             plt.errorbar(x, y, yerr=y_err, color=colors[i],
                          capsize=capsize, capthick=1,  # error bar format.
-                         label = f'{column:s}', linestyle = linestyle)
+                         label=f'{column:s}', linestyle=linestyle)
 
         plt.ylim(vmin, vmax)
         # plt.ylim(0., 0.8)
@@ -4304,8 +4486,9 @@ def plot_diurnal_cycle_columns_in_df(df: pd.DataFrame, columns=None,
 def plot_annual_cycle_columns_in_df(df: pd.DataFrame, columns=None,
                                     title=' ', linestyles=None,
                                     output_tag='',
-                                    ylabel='', with_marker=False,
+                                    ylabel='', with_marker=True,
                                     plot_errorbar=False,
+                                    colors=None, markers=None,
                                     vmin=None, vmax=None):
     """
     applied project Sky_clearness_2023:
@@ -4326,11 +4509,17 @@ def plot_annual_cycle_columns_in_df(df: pd.DataFrame, columns=None,
 
     # ----------------------------- set parameters -----------------------------
     # months = [11, 12, 1, 2, 3, 4]
-    colors = ['lightgrey', 'gray', 'lightcoral', 'firebrick', 'red', 'darkorange', 'gold', 'yellowgreen',
-              'green', 'cyan', 'deepskyblue', 'blue', 'darkviolet', 'magenta', 'pink']
-    markers = ['o', 'v', '^', '<', '1', 's', 'p', 'P', '*', '+', 'x', 'd', 'D']
+    if colors is None:
+        colors = ['lightgrey', 'gray', 'lightcoral', 'firebrick', 'red', 'darkorange', 'gold', 'yellowgreen',
+                  'green', 'cyan', 'deepskyblue', 'blue', 'darkviolet', 'magenta', 'pink']
 
+        if len(columns) < 5:
+            colors = ['red', 'blue', 'green', 'black']
 
+    if markers is None:
+        markers = ['o', 'v', '^', '<', '1', 's', 'p', 'P', '*', '+', 'x', 'd', 'D']
+        if len(columns) < 5:
+            markers = ['o', 'v', 's', '*', '+', 'x', 'd', 'D']
 
     # ----------------------------- set fig -----------------------------
     fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(8, 6),
@@ -4375,7 +4564,7 @@ def plot_annual_cycle_columns_in_df(df: pd.DataFrame, columns=None,
         else:
             plt.errorbar(x, y, yerr=y_err, color=colors[i],
                          capsize=capsize, capthick=1,  # error bar format.
-                         label = f'{column:s}', linestyle = linestyle)
+                         label=f'{column:s}', linestyle=linestyle)
 
         plt.ylim(vmin, vmax)
         # plt.ylim(0.3, 0.8)
@@ -4412,7 +4601,7 @@ def plot_monthly_diurnal_single_fig_df(df: pd.DataFrame, column=None, suptitle='
     """
 
     if months is None:  # 👍
-        months = [12, 1, 2,]
+        months = [12, 1, 2, ]
 
     # ----------------------------- set parameters -----------------------------
     # months = [11, 12, 1, 2, 3, 4]
@@ -5353,10 +5542,9 @@ def sellonlatbox(da: xr.DataArray, lonlatbox: list):
 
 
 def filter_remove_b_from_a_daily_df(a: pd.DataFrame, b: pd.DataFrame):
-
     mask = [a.index.strftime("%Y-%m-%d")[i] in b.index.strftime("%Y-%m-%d") for i in range(len(a))]
 
-    mask_inverse = [not(i) for i in mask]
+    mask_inverse = [not (i) for i in mask]
 
     return a[mask_inverse]
 
@@ -5868,7 +6056,7 @@ def plot_hourly_boxplot_ds_by(list_da: list, list_var_name: list, by: str = 'Mon
 
 
 def plot_hourly_boxplot_by(df: pd.DataFrame, columns: list, by: str,
-                           vmin = None, vmax = None, title='', ylabel='',
+                           vmin=None, vmax=None, title='', ylabel='',
                            output_tag: str = None):
     """
     applied project Sky_clearness_2023:
@@ -5920,7 +6108,6 @@ def plot_hourly_boxplot_by(df: pd.DataFrame, columns: list, by: str,
 
         ax.set_xlim(4, 20)
         sns.boxplot(x='Hour', y='target', hue='var', data=all_var, ax=ax, showmeans=True)
-
 
         if vmax is not None:
             ax.set_ylim(vmin, vmax)
@@ -7034,7 +7221,6 @@ def convert_da_to_std_dim_coords_names(da):
     #                       coords=coords_param,
     #                       name=da.name, attrs=da.attrs)
 
-
     # if max_coords_ndim == 2:
     #     new_da = xr.DataArray(da.values,
     #                           dims=list(new_dims.values()),
@@ -7810,9 +7996,189 @@ def value_reso_from_da(grid: xr.DataArray):
         return {'lat': reso_lat, 'lon': reso_lon}
 
 
-def plot_topo_reunion_high_reso(plot: bool = True, grid=None, output_tag: str = ''):
+def plot_topo_mauritius_high_reso(plot: bool = True, grid: xr.DataArray = None,
+                                  plot_max: bool = True,
+                                  add_point: list = None,
+                                  vmax=100, output_tag: str = ''):
     # The map is based on the ASTER Global Digital Elevation Model
     # from NASA Jet Propulsion Laboratory
+
+    file1 = f'~/local_data/topo/ASTGTMV003_S20E057_dem.nc'
+    file2 = f'~/local_data/topo/ASTGTMV003_S21E057_dem.nc'
+
+    ref1 = read_to_standard_da(file1, 'ASTER_GDEM_DEM')
+    ref2 = read_to_standard_da(file2, 'ASTER_GDEM_DEM')
+
+    ref = xr.concat([ref1, ref2[1:, :]], dim='y')
+    ref = ref.rename({'x': 'lon', 'y': 'lat'})
+
+    land = ref.where(ref != 0)
+
+    geomap = land
+
+    # -------------------------------------------------------------------
+    # plot:
+
+    cmap = plt.cm.terrain
+
+    fig = plt.figure(figsize=(8, 6), facecolor='w', edgecolor='k', dpi=300)
+    ax = plt.subplot(111, projection=ccrs.PlateCarree())
+
+    west = 57.2
+    east = 57.9
+    north = -19.9
+    south = -20.6
+
+    ax.set_extent([west, east, north, south], crs=ccrs.PlateCarree())
+
+    cmap, norm = set_cbar(vmax=vmax, vmin=0, n_cbar=20, cmap=cmap, bias=0)
+
+    print(f'max = {geomap.max().values:4.2f}')
+    cf = plt.pcolormesh(geomap.lon, geomap.lat, geomap,
+                        cmap=cmap, norm=norm, transform=ccrs.PlateCarree())
+
+    plt.xticks(np.arange(west, east, 0.1))
+    plt.yticks(np.arange(south, north, 0.1))
+
+    cb = plt.colorbar(cf, orientation='vertical', shrink=0.9, pad=0.05)
+    cb.ax.tick_params(labelsize=14)
+
+    cbar_label = f'elevation (meter)'
+    cb.set_label(label=cbar_label, size=14)
+    
+    if plot_max:
+        marker = '^'
+        top = geomap.where(geomap == geomap.max(), drop=True)
+        lat_max = top.coords['lat'].values[0]
+        lon_max = top.coords['lon'].values[0]
+        plt.scatter(lon_max, lat_max, marker=marker, s=80, c='r', edgecolor='k')
+
+    if add_point:
+        plt.scatter(add_point[0], add_point[1], marker=add_point[2], s=50, c='green', edgecolor='white')
+
+    if grid is not None:
+        # plot grid:
+        reso = value_reso_from_da(grid)
+
+        lon = np.round(grid.lon.values, decimals=2)
+        lat = np.round(grid.lat.values, decimals=2)
+
+        lon_grid = list(lon - reso * 0.5)
+        lon_grid.append(lon[-1] + 0.5 * reso)
+
+        lat_grid = list(lat - reso * 0.5)
+        lat_grid.append(lat[-1] + 0.5 * reso)
+
+        # plot grid lines:
+        plt.hlines(lat_grid, xmin=0, xmax=100, linestyle='--', color='gray', linewidth=0.5)
+        plt.vlines(lon_grid, ymin=-30, ymax=0, linestyle='--', color='gray', linewidth=0.5)
+
+    plt.savefig(f'./plot/reu.topo.{output_tag:s}.png', dpi=300)
+    plt.show()
+
+    print(f'done')
+
+
+def plot_topo_mauritius_high_reso(plot: bool = True, grid: xr.DataArray = None,
+                                plot_max: bool = True,
+                                add_point: list = None,
+                                vmax=100, output_tag: str = ''):
+    # The map is based on the ASTER Global Digital Elevation Model
+    # from NASA Jet Propulsion Laboratory
+    # attention: if dpi=300, it takes 1 hour to plot. use dpi=220, then 1 minute
+
+    file1 = f'~/local_data/topo/ASTGTMV003_S20E057_dem.nc'
+    file2 = f'~/local_data/topo/ASTGTMV003_S21E057_dem.nc'
+
+    ref1 = read_to_standard_da(file1, 'ASTER_GDEM_DEM')
+    ref2 = read_to_standard_da(file2, 'ASTER_GDEM_DEM')
+
+    ref = xr.concat([ref1, ref2[1:, :]], dim='y')
+    ref = ref.rename({'x': 'lon', 'y': 'lat'})
+
+    land = ref.where(ref != 0)
+
+    geomap = land
+
+    fontsize = 12
+    # -------------------------------------------------------------------
+    # plot:
+
+    cmap = plt.cm.terrain
+
+    fig = plt.figure(figsize=(8, 6), facecolor='w', edgecolor='k', dpi=300)
+    ax = plt.subplot(111, projection=ccrs.PlateCarree())
+
+    west = 57.2
+    east = 57.9
+    north = -19.9
+    south = -20.6
+
+    ax.set_extent([west, east, north, south], crs=ccrs.PlateCarree())
+
+    cmap, norm = set_cbar(vmax=vmax, vmin=0, n_cbar=20, cmap=cmap, bias=0)
+
+    print(f'max = {geomap.max().values:4.2f}')
+    print(f'waiting ...')
+
+    cf = plt.pcolormesh(geomap.lon, geomap.lat, geomap,
+                        cmap=cmap, norm=norm, transform=ccrs.PlateCarree())
+
+    plt.xticks(np.arange(west, east, 0.1))
+    plt.yticks(np.arange(south, north, 0.1))
+
+    cb = plt.colorbar(cf, orientation='vertical', shrink=0.9, pad=0.05)
+    cb.ax.tick_params(labelsize=14)
+
+    cbar_label = f'elevation (meter)'
+    cb.set_label(label=cbar_label, size=14)
+
+    plt.xlabel('Longitude', fontsize=fontsize)
+    plt.ylabel('Latitude', fontsize=fontsize)
+
+    if plot_max:
+        marker = '^'
+        max_value = geomap.max()
+        top = geomap.where(geomap == max_value, drop=True)
+        plt.scatter(top.lon, top.lat, marker=marker, s=80, c='r', edgecolor='k',
+                    label=f'summit @{int(max_value):g}m')
+
+    if add_point:
+        plt.scatter(add_point[0], add_point[1], marker=add_point[2], s=80,
+                    c='green', edgecolor='white', label=add_point[3])
+
+    plt.legend(fontsize=fontsize)
+
+    if grid is not None:
+        # plot grid:
+        reso = value_reso_from_da(grid)
+
+        lon = np.round(grid.lon.values, decimals=2)
+        lat = np.round(grid.lat.values, decimals=2)
+
+        lon_grid = list(lon - reso * 0.5)
+        lon_grid.append(lon[-1] + 0.5 * reso)
+
+        lat_grid = list(lat - reso * 0.5)
+        lat_grid.append(lat[-1] + 0.5 * reso)
+
+        # plot grid lines:
+        plt.hlines(lat_grid, xmin=0, xmax=100, linestyle='--', color='gray', linewidth=0.5)
+        plt.vlines(lon_grid, ymin=-30, ymax=0, linestyle='--', color='gray', linewidth=0.5)
+
+    plt.savefig(f'./plot/reu.topo.{output_tag:s}.png', dpi=300)
+    plt.show()
+
+    print(f'done')
+
+
+def plot_topo_reunion_high_reso(plot: bool = True, grid: xr.DataArray = None,
+                                  plot_max: bool = True,
+                                  add_point: list = None,
+                                  vmax=100, output_tag: str = ''):
+    # The map is based on the ASTER Global Digital Elevation Model
+    # from NASA Jet Propulsion Laboratory
+    # attention: if dpi=300, it takes 1 hour to plot. use dpi=220, then 1 minute
 
     file1 = f'~/local_data/topo/ASTGTMV003_S21E055_dem.nc'
     file2 = f'~/local_data/topo/ASTGTMV003_S22E055_dem.nc'
@@ -7827,6 +8193,8 @@ def plot_topo_reunion_high_reso(plot: bool = True, grid=None, output_tag: str = 
 
     geomap = land
 
+    fontsize = 12
+    # -------------------------------------------------------------------
     # plot:
 
     cmap = plt.cm.terrain
@@ -7834,21 +8202,45 @@ def plot_topo_reunion_high_reso(plot: bool = True, grid=None, output_tag: str = 
     fig = plt.figure(figsize=(8, 6), facecolor='w', edgecolor='k', dpi=300)
     ax = plt.subplot(111, projection=ccrs.PlateCarree())
 
-    ax.set_extent([55.05, 56, -21.55, -20.7], crs=ccrs.PlateCarree())
+    west = 55.05
+    east = 56
+    north = -20.7
+    south = -21.55
 
-    cmap, norm = set_cbar(vmax=3100, vmin=0, n_cbar=20, cmap=cmap, bias=0)
+    ax.set_extent([west, east, north, south], crs=ccrs.PlateCarree())
+
+    cmap, norm = set_cbar(vmax=vmax, vmin=0, n_cbar=20, cmap=cmap, bias=0)
+
+    print(f'max = {geomap.max().values:4.2f}')
+    print(f'waiting ...')
 
     cf = plt.pcolormesh(geomap.lon, geomap.lat, geomap,
                         cmap=cmap, norm=norm, transform=ccrs.PlateCarree())
 
-    plt.xticks(np.arange(55.05, 56, 0.1))
-    plt.yticks(np.arange(-21.55, -20.7, 0.1))
+    plt.xticks(np.arange(west, east, 0.1))
+    plt.yticks(np.arange(south, north, 0.1))
 
     cb = plt.colorbar(cf, orientation='vertical', shrink=0.9, pad=0.05)
-    cb.ax.tick_params(labelsize=14)
+    cb.ax.tick_params(labelsize=fontsize)
 
     cbar_label = f'elevation (meter)'
-    cb.set_label(label=cbar_label, size=14)
+    cb.set_label(label=cbar_label, size=fontsize)
+
+    plt.xlabel('Longitude', fontsize=fontsize)
+    plt.ylabel('Latitude', fontsize=fontsize)
+
+    if plot_max:
+        marker = '^'
+        max_value = geomap.max()
+        top = geomap.where(geomap == max_value, drop=True)
+        plt.scatter(top.lon, top.lat, marker=marker, s=80, c='r', edgecolor='k',
+                    label=f'summit @{int(max_value):g}m')
+
+    if add_point:
+        plt.scatter(add_point[0], add_point[1], marker=add_point[2], s=80,
+                    c='green', edgecolor='white', label=add_point[3])
+
+    plt.legend(fontsize=fontsize)
 
     if grid is not None:
         # plot grid:
