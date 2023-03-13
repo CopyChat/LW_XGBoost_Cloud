@@ -36,6 +36,20 @@ def compare_curves(df: pd.DataFrame, output_tag: str = None):
     plt.show()
 
 
+def read_mino_results(file_path: str):
+
+    # read
+    result_mino = GEO_PLOT.read_csv_into_df_with_header(file_path)
+    # shift to local time
+    result_mino = GEO_PLOT.convert_df_shifttime(result_mino, 3600 * 4)
+    # select only 6AM to 6PM. (already done by Mino, just to confirm)
+    result_mino = result_mino.between_time('6:00', '18:00')
+
+    df_valid = result_mino[{'CF_XGB', 'CF_APCADA', 'CF_OBS', 'PCA_APCADA'}]
+
+    return df_valid
+
+
 def plot_corr(df: pd.DataFrame):
     cor = df.corr(method='pearson')
 
