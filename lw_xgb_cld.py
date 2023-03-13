@@ -32,6 +32,9 @@ def cloud(cfg: DictConfig) -> None:
     """
     """
     print('start to work ...')
+    # ============================= read data ===========================
+    df_valid = RESEARCH.read_mino_results(cfg.file.result_mino)
+    # ============================= done read data ======================
 
     if cfg.job.data.lacy_bsrn:
         print(f'merge lacy and BSRN')
@@ -49,8 +52,8 @@ def cloud(cfg: DictConfig) -> None:
         raw_local = raw_local.dropna()
 
         # missing data check:
-        GEO_PLOT.check_missing_da_df(start='2019-10-01 00:00:00',
-                                     end='2021-10-01 00:00:00',
+        GEO_PLOT.check_missing_da_df(start='2019-09-13 00:00:00',
+                                     end='2021-09-13 00:00:00',
                                      # end='2022-08-31 17:53:00',
                                      output_plot_tag='train_data',
                                      freq='T', data=raw_local)
@@ -58,47 +61,75 @@ def cloud(cfg: DictConfig) -> None:
         raw_local.to_csv(cfg.file.raw)
         # more data added. lacy: 2019-09 - 2022-01 and 2022-05 - 2022-09
 
-    # read
-    df_raw = GEO_PLOT.read_csv_into_df_with_header(cfg.file.result_mino)
-    # shift to local time
-    df_raw = GEO_PLOT.convert_df_shifttime(df_raw, 3600 * 4)
-    # select only 6AM to 6PM. (already done by Mino, just to confirm)
-    df_raw = df_raw.between_time('6:00', '18:00')
+    if any(GEO_PLOT.get_values_multilevel_dict(dict(cfg.job.lacy))):
+        print(f'analysis the target data')
+        df_raw = GEO_PLOT.read_csv_into_df_with_header(cfg.file.raw)
 
-    df_valid = df_raw[{'CF_XGB', 'CF_APCADA', 'CF_OBS', 'PCA_APCADA'}]
+        train = df_raw['2019-09-13':'2021-09-12']['CF']
+        test = df_raw['2021-10-01':'2022-09-28']['CF']
 
-    # plot first week:
-    RESEARCH.compare_curves(df_valid['2021-01-04': '2021-01-10'], output_tag='raw')
+        if cfg.job.lacy.diurnal_annual_cycle:
 
-    # correlation:
-    RESEARCH.plot_corr(df_valid)
-    cor = df_valid.corr()
-    print(cor)
+            GEO_PLOT.plot_annual_diurnal_cycle_columns_in_df(df=df_raw, columns=['CF'], output_tag='all raw data',
+                                                             vmin=0.25, vmax=1.1, count_bar_plot=1)
 
-    # smooth of CF_APCADA
-    from scipy.signal import savgol_filter
+        if cfg.job.lacy.complete_check:
+            # check if the density profile are similar:
+            raw_19_20 = df_raw['2019-09-13': '2020-09-12']['CF']
+            raw_20_21 = df_raw['2020-09-13':'2021-09-12']['CF']
 
-    df_valid.insert(0, 'CF_APCADA_smooth', savgol_filter(df_valid.CF_APCADA, window_length=25, polyorder=3))
-    # ct_learn: replace value with condition:
-    df_valid = df_valid.where(df_valid['CF_APCADA_smooth'] <= 1, other=1)
+            GEO_PLOT.compare_density_profile_df_list(df_list=[raw_19_20, raw_20_21],
+                                                     tag_list=['20190913-20200912', '20200913_20210912'],
+                                                     count_bar_plot=1, cycle='month',
+                                                     output_tag='lacy_test')
 
-    RESEARCH.compare_curves(df_valid[{'CF_APCADA_smooth', 'CF_APCADA'}]['2021-01-04': '2021-01-07'],
-                             output_tag='smoothed')
-    cor = df_valid[{'CF_APCADA_smooth', 'CF_APCADA', 'CF_XGB', 'CF_OBS'}].corr()
-    print(cor)
+            GEO_PLOT.compare_density_profile_df_list(df_list=[train, test],
+                                                     tag_list=['train_20190913-20210912', 'test_20211001_20220928'],
+                                                     count_bar_plot=1, cycle='month',
+                                                     output_tag='lacy data complete')
 
-    # ct_learn: new column
-    df_valid.insert(0, column='bias_XGB', value=df_valid['CF_XGB'] - df_valid['CF_OBS'])
-    df_valid = df_valid.assign(bias_APCADA=df_valid['CF_APCADA'] - df_valid['CF_OBS'])
+    if cfg.job.plot_topo:
+        GEO_PLOT.plot_topo_reunion_high_reso(plot=1, output_tag='reu', vmax=3100, plot_max=1)
 
-    RESEARCH.compare_curves(df_valid['2021-01-04': '2021-01-07'], output_tag='smoothed_with_bias')
-    cor = df_valid[{'CF_APCADA_smooth', 'CF_APCADA', 'CF_OBS', 'CF_XGB'}].corr()
-    print(cor)
+        GEO_PLOT.plot_topo_reunion_high_reso(plot=1, output_tag='reu_bsrn', vmax=3100, plot_max=1,
+                                             add_point=[55.48, -20.90, 'o', 'Reunion BSRN station'])
 
-    # normality
-    RESEARCH.check_normal(df_valid[{'CF_APCADA'}], output_tag='check.normal')
-    RESEARCH.check_normal(df_valid[{'CF_OBS'}], output_tag='CF_OBS')
-    RESEARCH.check_normal(df_valid[{'CF_XGB'}], output_tag='check.normal')
+        GEO_PLOT.plot_topo_mauritius_high_reso(plot=1, vmax=800, output_tag='mauritius', plot_max=1)
+
+    if cfg.job.result_analysis:
+
+        # plot first week:
+        RESEARCH.compare_curves(df_valid['2021-01-04': '2021-01-10'], output_tag='raw')
+
+        # correlation:
+        RESEARCH.plot_corr(df_valid)
+        cor = df_valid.corr()
+        print(cor)
+
+        # smooth of CF_APCADA
+        from scipy.signal import savgol_filter
+
+        df_valid.insert(0, 'CF_APCADA_smooth', savgol_filter(df_valid.CF_APCADA, window_length=25, polyorder=3))
+        # ct_learn: replace value with condition:
+        df_valid = df_valid.where(df_valid['CF_APCADA_smooth'] <= 1, other=1)
+
+        RESEARCH.compare_curves(df_valid[{'CF_APCADA_smooth', 'CF_APCADA'}]['2021-01-04': '2021-01-07'],
+                                 output_tag='smoothed')
+        cor = df_valid[{'CF_APCADA_smooth', 'CF_APCADA', 'CF_XGB', 'CF_OBS'}].corr()
+        print(cor)
+
+        # ct_learn: new column
+        df_valid.insert(0, column='bias_XGB', value=df_valid['CF_XGB'] - df_valid['CF_OBS'])
+        df_valid = df_valid.assign(bias_APCADA=df_valid['CF_APCADA'] - df_valid['CF_OBS'])
+
+        RESEARCH.compare_curves(df_valid['2021-01-04': '2021-01-07'], output_tag='smoothed_with_bias')
+        cor = df_valid[{'CF_APCADA_smooth', 'CF_APCADA', 'CF_OBS', 'CF_XGB'}].corr()
+        print(cor)
+
+        # normality
+        RESEARCH.check_normal(df_valid[{'CF_APCADA'}], output_tag='check.normal')
+        RESEARCH.check_normal(df_valid[{'CF_OBS'}], output_tag='CF_OBS')
+        RESEARCH.check_normal(df_valid[{'CF_XGB'}], output_tag='check.normal')
 
     if cfg.job.valid.by_hour:
         # bias distribution

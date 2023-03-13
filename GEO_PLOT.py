@@ -8045,7 +8045,7 @@ def plot_topo_mauritius_high_reso(plot: bool = True, grid: xr.DataArray = None,
 
     cbar_label = f'elevation (meter)'
     cb.set_label(label=cbar_label, size=14)
-    
+
     if plot_max:
         marker = '^'
         top = geomap.where(geomap == geomap.max(), drop=True)
@@ -8080,9 +8080,9 @@ def plot_topo_mauritius_high_reso(plot: bool = True, grid: xr.DataArray = None,
 
 
 def plot_topo_mauritius_high_reso(plot: bool = True, grid: xr.DataArray = None,
-                                plot_max: bool = True,
-                                add_point: list = None,
-                                vmax=100, output_tag: str = ''):
+                                  plot_max: bool = True,
+                                  add_point: list = None,
+                                  vmax=100, output_tag: str = ''):
     # The map is based on the ASTER Global Digital Elevation Model
     # from NASA Jet Propulsion Laboratory
     # attention: if dpi=300, it takes 1 hour to plot. use dpi=220, then 1 minute
@@ -8173,9 +8173,9 @@ def plot_topo_mauritius_high_reso(plot: bool = True, grid: xr.DataArray = None,
 
 
 def plot_topo_reunion_high_reso(plot: bool = True, grid: xr.DataArray = None,
-                                  plot_max: bool = True,
-                                  add_point: list = None,
-                                  vmax=100, output_tag: str = ''):
+                                plot_max: bool = True,
+                                add_point: list = None,
+                                vmax=100, output_tag: str = ''):
     # The map is based on the ASTER Global Digital Elevation Model
     # from NASA Jet Propulsion Laboratory
     # attention: if dpi=300, it takes 1 hour to plot. use dpi=220, then 1 minute
@@ -8263,6 +8263,129 @@ def plot_topo_reunion_high_reso(plot: bool = True, grid: xr.DataArray = None,
     plt.show()
 
     print(f'done')
+
+
+def compare_density_profile_df_list(df_list=None, tag_list=[],
+                                    linestyles=None,
+                                    output_tag='',
+                                    count_bar_plot=True,
+                                    cycle='month',
+                                    colors=None, markers=None,
+                                    with_marker=False,
+                                    vmin=None, vmax=None):
+    """
+    applied project LW_XGBoost_Cloud,
+    :param months:
+    :param suptitle:
+    :param df:
+    :param columns:
+    :return:
+    """
+
+    # ----------------------------- set parameters -----------------------------
+    n_df = len(df_list)
+    # ----------------------------------- color and markers ------------------------------
+    if colors is None:
+        colors = ['lightgrey', 'gray', 'lightcoral', 'firebrick', 'red', 'darkorange', 'gold', 'yellowgreen',
+                  'green', 'cyan', 'deepskyblue', 'blue', 'darkviolet', 'magenta', 'pink']
+
+        if n_df < 5:
+            colors = ['blue', 'red', 'green', 'black']
+
+    if markers is None:
+        markers = ['o', 'v', '^', '<', '1', 's', 'p', 'P', '*', '+', 'x', 'd', 'D']
+        if n_df < 5:
+            markers = ['o', 'v', 's', '*', '+', 'x', 'd', 'D']
+    # ----------------------------- set fig -----------------------------
+    alpha_bar_plot = 0.7
+    fontsize = 12
+
+    fig, axes = plt.subplots(nrows=2, ncols=1, figsize=(8, 4 + 2 * count_bar_plot), facecolor='w', edgecolor='k', dpi=300)  # figsize=(w,h)
+    fig.subplots_adjust(left=0.15, right=0.9, bottom=0.1, top=0.95, wspace=0.05, hspace=0.3)
+    axes = axes.flatten()
+
+    # ----------------------------- plotting -----------------------------
+    # density profile
+    ax = axes[0]
+    plt.sca(ax)
+
+    for i in range(n_df):
+
+        df0 = df_list[i]
+        df = drop_nan_infinity(df0)
+
+        if linestyles is not None:
+            linestyle = linestyles[i]
+        else:
+            linestyle = '-'
+
+        df.hist(bins=10, alpha=0.2, ax=axes[0])
+        if with_marker:
+            df.plot(kind='kde', secondary_y=True, ax=ax, label=tag_list[i], marker=markers[i], color=colors[i])
+            print(tag_list[i])
+        else:
+            df.plot(kind='kde', secondary_y=True, ax=ax, label=tag_list[i], color=colors[i])
+        plt.grid(zorder=-1)
+
+        # Set tick font size
+        plt.xticks(fontsize=fontsize)
+
+        # plt.legend(loc='upper right', fontsize=8)
+        plt.legend(fontsize=fontsize)
+        # plt.xlabel(f'Hour', fontsize=fontsize)
+        # plt.ylabel(ylabel, fontsize=fontsize)
+
+        if vmin is not None:
+            plt.ylim(vmin, vmax)
+
+    if count_bar_plot:
+        ax = axes[1]
+        plt.sca(ax)
+        if cycle == 'hour':
+            # count bar plot hourly
+
+            # get count from list of df
+            for i in range(n_df):
+                df1 = drop_nan_infinity(df_list[i])
+                count1 = df1.groupby(df1.index.hour).count()
+                if not i:
+                    df_count = count1
+                else:
+                    df_count = pd.concat([df_count, count1], axis=1)
+            # change the names back:
+            df_count.set_axis(tag_list, axis=1, inplace=True)
+
+            df_count.plot(kind='bar', color=colors, ax=ax, grid=True, alpha=alpha_bar_plot, fontsize=fontsize)
+            hours = list(set(df.index.hour))
+            plt.xticks(ticks=[xx - np.min(hours) for xx in hours], labels=hours, rotation=0, fontsize=fontsize)
+            plt.legend(fontsize=fontsize)
+            plt.ylabel('data count', fontsize=fontsize)
+            plt.xlabel('Hour', fontsize=fontsize)
+
+        if cycle == 'month':
+            # count bar plot monthly
+
+            # get count from list of df
+            for i in range(n_df):
+                df1 = drop_nan_infinity(df_list[i])
+                count1 = df1.groupby(df1.index.month).count()
+                if not i:
+                    df_count = count1
+                else:
+                    df_count = pd.concat([df_count, count1], axis=1)
+            # change the names back:
+            df_count.set_axis(tag_list, axis=1, inplace=True)
+
+            df_count.plot(kind='bar', color=colors, ax=ax, grid=True, alpha=alpha_bar_plot, fontsize=fontsize,
+                          xlabel='Month', ylabel='data count')
+            plt.xticks(ticks=range(0, 12), labels=[x for x in range(1, 13)], rotation=0, fontsize=fontsize)
+            plt.legend(fontsize=fontsize)
+            plt.ylabel('data count', fontsize=fontsize)
+            plt.xlabel('Month', fontsize=fontsize)
+
+    plt.savefig(f'./plot/density_{cycle:s}ly_bar_{int(count_bar_plot):g}.{output_tag:s}.png', dpi=300)
+    plt.show()
+    print(f'got the plot')
 
 
 def value_altitude_from_lonlat_reunion(lon: np.ndarray, lat: np.ndarray,
