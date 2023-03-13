@@ -8,12 +8,15 @@ hydra:
 
 job:
   data:
-    lacy_bsrn: 1
+    lacy_bsrn: 0
+  lacy:
+    diurnal_annual_cycle: 0
+    complete_check: 1
+  plot_topo: 0
   valid:
     by_hour: 0
     by_height: 0
     by_octas: 1
-
 
 file:
   raw_lacy: ./local_data/clt.lacy.201909.202209.30sec.utc.csv
