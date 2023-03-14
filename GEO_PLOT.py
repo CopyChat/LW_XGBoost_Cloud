@@ -8265,6 +8265,21 @@ def plot_topo_reunion_high_reso(plot: bool = True, grid: xr.DataArray = None,
     print(f'done')
 
 
+def nc_drop_duplicate(ds: xr.Dataset, dim: str = 'XTIME', keep: str = 'first', show: bool = True):
+
+    indexes = {dim: np.logical_not(ds.get_index(dim).duplicated(keep=keep)) for dim in [dim, ]}
+
+    if show:
+        duplicated_index = {dim: ds.get_index(dim).duplicated(keep=keep) for dim in [dim, ]}
+        ds_duplicated = ds.isel(duplicated_index)
+
+        print(f'duplicated_index found: {ds_duplicated.sizes[dim]:g}.')
+        print(ds_duplicated[dim].values)
+        print(f'duplicated_index found: {ds_duplicated.sizes[dim]:g}.')
+
+    return ds.isel(indexes)
+
+
 def compare_density_profile_df_list(df_list=None, tag_list=[],
                                     linestyles=None,
                                     output_tag='',
