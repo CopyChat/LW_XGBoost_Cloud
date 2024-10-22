@@ -7999,89 +7999,7 @@ def value_reso_from_da(grid: xr.DataArray):
 def plot_topo_mauritius_high_reso(plot: bool = True, grid: xr.DataArray = None,
                                   plot_max: bool = True,
                                   add_point: list = None,
-                                  vmax=100, output_tag: str = ''):
-    # The map is based on the ASTER Global Digital Elevation Model
-    # from NASA Jet Propulsion Laboratory
-
-    file1 = f'~/local_data/topo/ASTGTMV003_S20E057_dem.nc'
-    file2 = f'~/local_data/topo/ASTGTMV003_S21E057_dem.nc'
-
-    ref1 = read_to_standard_da(file1, 'ASTER_GDEM_DEM')
-    ref2 = read_to_standard_da(file2, 'ASTER_GDEM_DEM')
-
-    ref = xr.concat([ref1, ref2[1:, :]], dim='y')
-    ref = ref.rename({'x': 'lon', 'y': 'lat'})
-
-    land = ref.where(ref != 0)
-
-    geomap = land
-
-    # -------------------------------------------------------------------
-    # plot:
-
-    cmap = plt.cm.terrain
-
-    fig = plt.figure(figsize=(8, 6), facecolor='w', edgecolor='k', dpi=300)
-    ax = plt.subplot(111, projection=ccrs.PlateCarree())
-
-    west = 57.2
-    east = 57.9
-    north = -19.9
-    south = -20.6
-
-    ax.set_extent([west, east, north, south], crs=ccrs.PlateCarree())
-
-    cmap, norm = set_cbar(vmax=vmax, vmin=0, n_cbar=20, cmap=cmap, bias=0)
-
-    print(f'max = {geomap.max().values:4.2f}')
-    cf = plt.pcolormesh(geomap.lon, geomap.lat, geomap,
-                        cmap=cmap, norm=norm, transform=ccrs.PlateCarree())
-
-    plt.xticks(np.arange(west, east, 0.1))
-    plt.yticks(np.arange(south, north, 0.1))
-
-    cb = plt.colorbar(cf, orientation='vertical', shrink=0.9, pad=0.05)
-    cb.ax.tick_params(labelsize=14)
-
-    cbar_label = f'elevation (meter)'
-    cb.set_label(label=cbar_label, size=14)
-
-    if plot_max:
-        marker = '^'
-        top = geomap.where(geomap == geomap.max(), drop=True)
-        lat_max = top.coords['lat'].values[0]
-        lon_max = top.coords['lon'].values[0]
-        plt.scatter(lon_max, lat_max, marker=marker, s=80, c='r', edgecolor='k')
-
-    if add_point:
-        plt.scatter(add_point[0], add_point[1], marker=add_point[2], s=50, c='green', edgecolor='white')
-
-    if grid is not None:
-        # plot grid:
-        reso = value_reso_from_da(grid)
-
-        lon = np.round(grid.lon.values, decimals=2)
-        lat = np.round(grid.lat.values, decimals=2)
-
-        lon_grid = list(lon - reso * 0.5)
-        lon_grid.append(lon[-1] + 0.5 * reso)
-
-        lat_grid = list(lat - reso * 0.5)
-        lat_grid.append(lat[-1] + 0.5 * reso)
-
-        # plot grid lines:
-        plt.hlines(lat_grid, xmin=0, xmax=100, linestyle='--', color='gray', linewidth=0.5)
-        plt.vlines(lon_grid, ymin=-30, ymax=0, linestyle='--', color='gray', linewidth=0.5)
-
-    plt.savefig(f'./plot/reu.topo.{output_tag:s}.png', dpi=300)
-    plt.show()
-
-    print(f'done')
-
-
-def plot_topo_mauritius_high_reso(plot: bool = True, grid: xr.DataArray = None,
-                                  plot_max: bool = True,
-                                  add_point: list = None,
+                                  dpi: int = 200,
                                   vmax=100, output_tag: str = ''):
     # The map is based on the ASTER Global Digital Elevation Model
     # from NASA Jet Propulsion Laboratory
@@ -8106,13 +8024,13 @@ def plot_topo_mauritius_high_reso(plot: bool = True, grid: xr.DataArray = None,
 
     cmap = plt.cm.terrain
 
-    fig = plt.figure(figsize=(8, 6), facecolor='w', edgecolor='k', dpi=300)
+    fig = plt.figure(figsize=(8, 6), facecolor='w', edgecolor='k', dpi=dpi)
     ax = plt.subplot(111, projection=ccrs.PlateCarree())
 
     west = 57.2
     east = 57.9
-    north = -19.9
-    south = -20.6
+    north = -19.85
+    south = -20.65
 
     ax.set_extent([west, east, north, south], crs=ccrs.PlateCarree())
 
@@ -8128,10 +8046,10 @@ def plot_topo_mauritius_high_reso(plot: bool = True, grid: xr.DataArray = None,
     plt.yticks(np.arange(south, north, 0.1))
 
     cb = plt.colorbar(cf, orientation='vertical', shrink=0.9, pad=0.05)
-    cb.ax.tick_params(labelsize=14)
+    cb.ax.tick_params(labelsize=fontsize)
 
     cbar_label = f'elevation (meter)'
-    cb.set_label(label=cbar_label, size=14)
+    cb.set_label(label=cbar_label, size=fontsize)
 
     plt.xlabel('Longitude', fontsize=fontsize)
     plt.ylabel('Latitude', fontsize=fontsize)
@@ -8166,7 +8084,7 @@ def plot_topo_mauritius_high_reso(plot: bool = True, grid: xr.DataArray = None,
         plt.hlines(lat_grid, xmin=0, xmax=100, linestyle='--', color='gray', linewidth=0.5)
         plt.vlines(lon_grid, ymin=-30, ymax=0, linestyle='--', color='gray', linewidth=0.5)
 
-    plt.savefig(f'./plot/reu.topo.{output_tag:s}.png', dpi=300)
+    plt.savefig(f'./plot/reu.topo.{output_tag:s}.png', dpi=dpi)
     plt.show()
 
     print(f'done')
@@ -8175,6 +8093,7 @@ def plot_topo_mauritius_high_reso(plot: bool = True, grid: xr.DataArray = None,
 def plot_topo_reunion_high_reso(plot: bool = True, grid: xr.DataArray = None,
                                 plot_max: bool = True,
                                 add_point: list = None,
+                                dpi: int = 200,
                                 vmax=100, output_tag: str = ''):
     # The map is based on the ASTER Global Digital Elevation Model
     # from NASA Jet Propulsion Laboratory
@@ -8199,7 +8118,7 @@ def plot_topo_reunion_high_reso(plot: bool = True, grid: xr.DataArray = None,
 
     cmap = plt.cm.terrain
 
-    fig = plt.figure(figsize=(8, 6), facecolor='w', edgecolor='k', dpi=300)
+    fig = plt.figure(figsize=(8, 6), facecolor='w', edgecolor='k', dpi=dpi)
     ax = plt.subplot(111, projection=ccrs.PlateCarree())
 
     west = 55.05
@@ -8259,7 +8178,7 @@ def plot_topo_reunion_high_reso(plot: bool = True, grid: xr.DataArray = None,
         plt.hlines(lat_grid, xmin=0, xmax=100, linestyle='--', color='gray', linewidth=0.5)
         plt.vlines(lon_grid, ymin=-30, ymax=0, linestyle='--', color='gray', linewidth=0.5)
 
-    plt.savefig(f'./plot/reu.topo.{output_tag:s}.png', dpi=300)
+    plt.savefig(f'./plot/reu.topo.{output_tag:s}.png', dpi=dpi)
     plt.show()
 
     print(f'done')
@@ -8472,6 +8391,49 @@ def value_aod_reunion(times: pd.DatetimeIndex, wavelength: float = 700):
     # not finished yet
 
     return 1
+
+
+def value_clearsky_radiation_df(
+        times: pd.DatetimeIndex,
+        lon: float,
+        lat: float,
+        model: str = 'climatology',
+        show: bool = 1):
+
+    import pvlib
+    from pvlib import clearsky, atmosphere, solarposition
+    from pvlib.location import Location
+
+    # ----------------------------- definition -----------------------------
+    if model == 'climatology':
+        clearsky_model = 'ineichen'  # ineichen with climatology table by default
+    if model == 'local_atmosphere':
+        clearsky_model = 'simplified_solis'
+
+    # prepare time
+    import timezonefinder
+    tf = timezonefinder.TimezoneFinder()
+    timezone_str = tf.closest_timezone_at(lat=lat, lng=lon)
+    times_tz = pd.DatetimeIndex(times).tz_localize(tz=timezone_str)
+    # tz is required for clear_sky calculation.
+    # while it's better to output ds/da without tz, since is not natively supported by pandas and/so xarray
+
+    # prepare altitude
+    altitude = 10
+
+    print(f'calculate clearsky radiation at each pixel: lon={lon:4.2f}, lat={lat:4.2f}, '
+          f'altitude={altitude:4.2f}')
+    pixel = Location(latitude=lat, longitude=lon, altitude=altitude)
+    cs: pd.DataFrame = pixel.get_clearsky(times_tz, model=clearsky_model)
+
+    if show:
+        print(f'plot the last point and last 72 timestep...')
+        cs[0:1000].plot()
+        plt.ylabel('Irradiance $W/m^2$')
+        plt.grid()
+        plt.show()
+
+    return cs
 
 
 def value_clearsky_radiation(

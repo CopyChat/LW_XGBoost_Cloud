@@ -20,6 +20,7 @@ import numpy as np
 from importlib import reload
 import matplotlib.pyplot as plt
 from omegaconf import DictConfig
+import xarray as xr
 import pandas as pd
 
 import GEO_PLOT
@@ -32,6 +33,11 @@ def cloud(cfg: DictConfig) -> None:
     """
     """
     print('start to work ...')
+
+    wrfinput_d01 = GEO_PLOT.read_to_standard_da("~/Microsoft_OneDrive/OneDrive/CODE/WRF_R_M_2023/local_data/real/wrfinput_d01", 'ZNU')
+    wrfinput_d01 = xr.open_dataset("~/Microsoft_OneDrive/OneDrive/CODE/WRF_R_M_2023/local_data/real/wrfinput_d01")
+    xr.open_dataset("/Users/ctang/Microsoft_OneDrive/OneDrive/CODE/Wind_cordex/local_data/rsds/rsds_AFR-22_NCC-NorESM1-M_rcp85_r1i1p1_ICTP-RegCM4-7_v0_mon_209101-209912.nc")
+
     # ============================= read data ===========================
     df_valid = RESEARCH.read_mino_results(cfg.file.result_mino)
     # ============================= done read data ======================
@@ -65,11 +71,14 @@ def cloud(cfg: DictConfig) -> None:
         print(f'analysis the target data')
         df_raw = GEO_PLOT.read_csv_into_df_with_header(cfg.file.raw)
 
+        # # get 5 min data:
+        # df_raw_5min = df_raw[df_raw.index.minute.isin([0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55])]
+        # df_raw_5min.to_csv(f'./dataset/raw.bsrn_lacy.2019_2022.5min.local_time.csv')
+
         train = df_raw['2019-09-13':'2021-09-12']['CF']
         test = df_raw['2021-10-01':'2022-09-28']['CF']
 
         if cfg.job.lacy.diurnal_annual_cycle:
-
             GEO_PLOT.plot_annual_diurnal_cycle_columns_in_df(df=df_raw, columns=['CF'], output_tag='all raw data',
                                                              vmin=0.25, vmax=1.1, count_bar_plot=1)
 
@@ -89,15 +98,41 @@ def cloud(cfg: DictConfig) -> None:
                                                      output_tag='lacy data complete')
 
     if cfg.job.plot_topo:
-        GEO_PLOT.plot_topo_reunion_high_reso(plot=1, output_tag='reu', vmax=3100, plot_max=1)
+        GEO_PLOT.plot_topo_reunion_high_reso(plot=1, output_tag='reu', vmax=3100, plot_max=1, dpi=300)
 
-        GEO_PLOT.plot_topo_reunion_high_reso(plot=1, output_tag='reu_bsrn', vmax=3100, plot_max=1,
+        GEO_PLOT.plot_topo_reunion_high_reso(plot=1, output_tag='reu_bsrn', vmax=3100, plot_max=1, dpi=300,
                                              add_point=[55.48, -20.90, 'o', 'Reunion BSRN station'])
 
-        GEO_PLOT.plot_topo_mauritius_high_reso(plot=1, vmax=800, output_tag='mauritius', plot_max=1)
+        GEO_PLOT.plot_topo_mauritius_high_reso(plot=1, vmax=800, output_tag='mauritius', plot_max=1, dpi=300)
+
+        GEO_PLOT.plot_topo_mauritius_high_reso(plot=1, vmax=3100, output_tag='mauritius_in_reunion_cbar', dpi=200,
+                                               plot_max=1)
+
+    if cfg.job.apcada:
+
+        # loading data:
+        # all the data are used to select clear-sky conditions; and to fit apacada coefficients
+        df_raw = GEO_PLOT.read_csv_into_df_with_header(cfg.file.raw)
+
+        clear_sky_radiation = GEO_PLOT.value_clearsky_radiation_df(
+            times=df_raw.index, lon=55.5, lat=-21.1, model='climatology', show=1)
+
+        from pvlib import clearsky
+
+        df_raw['ghi'] = clear_sky_radiation['ghi'].values
+
+        df_cs = df_raw[{'GSW', 'ghi'}].resample('60S').bfill()
+
+        clear_samples = clearsky.detect_clearsky(df_cs['GSW'],
+                                                 df_cs['ghi'],
+                                                 df_cs.index, 10)
+
+        df_cs['clear'] = clear_samples.values
+
+        cs_mask: pd.DataFrame = df_cs.loc[df_raw.index]
+
 
     if cfg.job.result_analysis:
-
         # plot first week:
         RESEARCH.compare_curves(df_valid['2021-01-04': '2021-01-10'], output_tag='raw')
 
@@ -114,7 +149,7 @@ def cloud(cfg: DictConfig) -> None:
         df_valid = df_valid.where(df_valid['CF_APCADA_smooth'] <= 1, other=1)
 
         RESEARCH.compare_curves(df_valid[{'CF_APCADA_smooth', 'CF_APCADA'}]['2021-01-04': '2021-01-07'],
-                                 output_tag='smoothed')
+                                output_tag='smoothed')
         cor = df_valid[{'CF_APCADA_smooth', 'CF_APCADA', 'CF_XGB', 'CF_OBS'}].corr()
         print(cor)
 
@@ -167,7 +202,6 @@ def cloud(cfg: DictConfig) -> None:
         print(f'good')
 
     if cfg.job.valid.by_octas:
-
         df_valid.insert(0, 'OBS_octas', GEO_PLOT.convert_cf_to_octas(df_valid.CF_OBS.values))
         df_valid.insert(0, 'XGB_octas', GEO_PLOT.convert_cf_to_octas(df_valid.CF_XGB.values))
 
