@@ -6,7 +6,7 @@ where assumptions made in lower level of atmosphere.
 This file is to analysis the XGBoost results, all ML works are deal with MS Code.
 """
 
-__version__ = f'Version 2.0  \nTime-stamp: <2022-08-19>'
+__version__ = f'Version 1.0  \nTime-stamp: <2024-11-06>'
 __author__ = "ChaoTANG@univ-reunion.fr"
 
 import sys
@@ -36,12 +36,12 @@ def cloud(cfg: DictConfig) -> None:
     """
     print('start to work ...')
 
-    wrfinput_d01 = GEO_PLOT.read_to_standard_da("~/Microsoft_OneDrive/OneDrive/CODE/WRF_R_M_2023/local_data/real/wrfinput_d01", 'ZNU')
-    wrfinput_d01 = xr.open_dataset("~/Microsoft_OneDrive/OneDrive/CODE/WRF_R_M_2023/local_data/real/wrfinput_d01")
     xr.open_dataset("/Users/ctang/Microsoft_OneDrive/OneDrive/CODE/Wind_cordex/local_data/rsds/rsds_AFR-22_NCC-NorESM1-M_rcp85_r1i1p1_ICTP-RegCM4-7_v0_mon_209101-209912.nc")
 
     # ============================= read data ===========================
-    df_valid = RESEARCH.read_mino_results(cfg.file.result_mino)
+    df_raw = 'dd'
+    # split data:
+
     # ============================= done read data ======================
 
     if cfg.job.data.lacy_bsrn:
