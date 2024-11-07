@@ -27,11 +27,10 @@ import pandas as pd
 
 import GEO_PLOT
 import RESEARCH
+import pickle
 import PUBLISH
 from sklearn.model_selection import train_test_split
 
-
-# functions:
 def split(data, tst_sz):
     y = data["CF"]
     X = data.drop("CF" , axis=1)
@@ -39,217 +38,174 @@ def split(data, tst_sz):
     X_train, X_test, y_train, y_test = train_test_split(X,y, test_size=tst_sz, random_state=7)
     return X_train, X_test, y_train, y_test
 
+# Global data:
+# Global constant definition (naming in uppercase)
 
-@hydra.main(config_path="configs", config_name="benchmark")
+# ============================= read data ===========================
+data_set_name = '../dataset/raw.bsrn_lacy.2019_2022.1min.local_time.csv'
+# data = pd.read_csv(path_data+data_set_name,delim_whitespace = False)
+df_raw = GEO_PLOT.read_csv_into_df_with_header(data_set_name)
+print(df_raw.size)
+df_raw.corr(method='pearson')
+# ----------------------------  split data:
+# works on two-year data:
+# for training (SearchGrid and CV) and valid
+train_valid = df_raw['2019-09-13':'2021-09-12']
+X_train, X_valid, y_train, y_valid = split(train_valid, 0.1)
+
+predictors = list(df_raw.columns)
+# #predictors.remove('P')
+# #predictors.remove('RH')
+predictors.remove('CF')
+
+# X_train = df_raw['2019-09-13':'2021-09-12'][predictors]
+# y_train = df_raw['2019-09-13':'2021-09-12'][{'CF'}]
+
+X_test = df_raw['2021-10-01':'2022-09-28'][predictors]
+y_test = df_raw['2021-10-01':'2022-09-28'][['CF']]
+
+print(X_train.columns)
+# data for training and valid, to verify model.
+# only train data is used for searching parameter with CV.
+# define evalSet for monitoring train and valid process for early_stopping and overfitting.
+evalSet = [(X_train, y_train), (X_valid, y_valid)]
+
+# ============================= done of read data ===========================
+# functions:
+
+def my_learning_curve(model, X_train, X_test, y_train, y_test,fig_name):
+    scr_train = round(model.score(X_train, y_train),4)
+    scr_test  = round(model.score(X_test, y_test),4)
+    y_pred   = model.predict(X_test)
+
+    resultat = model.evals_result()
+
+    plt.figure(figsize=(8, 8))
+
+    plt.plot(resultat['validation_0']['rmse'], label = 'train=%f' %scr_train, color='blue')
+    plt.plot(resultat['validation_1']['rmse'], label = 'test=%f' %scr_test, color='red')
+
+    plt.tick_params(labelsize=14)
+    plt.ylabel('', fontsize=148)
+    plt.xlabel('', fontsize=148)
+    plt.title("Learning curve RMSE", fontsize=14)
+    plt.legend(prop={'size':15})
+    plt.savefig(fig_name + ".png")
+    plt.show()
+
+def upgrade_model(model, param_name, param_value):
+    print(f'old {param_name} is: {model.get_params()[param_name]}')
+    # upgrade model parameter:
+    params = {param_name: param_value}
+    model.set_params(**params)
+    print(f'new {param_name} is: {model.get_params()[param_name]}')
+
+def upgrade_model_and_plot(model, param_name, param_value):
+    # upgrade model parameter:
+    upgrade_model(model, param_name, param_value)
+
+    model.fit(X_train, y_train, eval_set=evalSet)
+    my_learning_curve(model, X_train, X_valid, y_train, y_valid, fig_name)
+
+def plot_learning_curve(model, evalSet, fig_name='learning_curve.png'):
+    """
+    using train and test valid datasets, but the showing "testing curve"
+    model:
+    evalSet:
+    :return:
+    """
+    print(f'start training...')
+    model.fit(X_train, y_train, verbose=False, eval_set=evalSet)
+
+    # plotting:
+    scr_train = round(model.score(X_train, y_train), 4)
+    scr_test = round(model.score(X_valid, y_valid), 4)
+    y_pred = model.predict(X_valid)
+
+    resultat = model.evals_result()
+
+    plt.figure(figsize=(8, 8))
+
+    plt.plot(resultat['validation_0']['rmse'], label='train=%f' % scr_train, color='blue')
+    plt.plot(resultat['validation_1']['rmse'], label='test=%f' % scr_test, color='red')
+
+    plt.tick_params(labelsize=14)
+    plt.ylabel('', fontsize=148)
+    plt.xlabel('', fontsize=148)
+    plt.title("Learning curve RMSE", fontsize=14)
+    plt.legend(prop={'size': 15})
+    plt.savefig(f'./{fig_name:s}')
+    plt.show()
+
+
+from scipy.stats import pearsonr
+
+
+def calculate_statistics(df):
+    # Ensure required columns are present
+    if not {'CF', 'CF_pred'}.issubset(df.columns):
+        raise ValueError("DataFrame must contain 'CF' and 'CF_pred' columns.")
+
+    # Drop missing values to avoid errors in calculations
+    df = df[['CF', 'CF_pred']].dropna()
+
+    # Calculate RMSE
+    rmse = np.sqrt(((df['CF'] - df['CF_pred']) ** 2).mean())
+
+    # Calculate MAB (Mean Absolute Bias)
+    mab = (df['CF'] - df['CF_pred']).abs().mean()
+
+    # Calculate COR (Pearson Correlation Coefficient)
+    cor, _ = pearsonr(df['CF'], df['CF_pred'])
+
+    # Calculate MES (Mean Error Square)
+    mes = ((df['CF'] - df['CF_pred']) ** 2).mean()
+
+    # Calculate R^2 (Coefficient of Determination)
+    ss_res = ((df['CF'] - df['CF_pred']) ** 2).sum()
+    ss_tot = ((df['CF'] - df['CF'].mean()) ** 2).sum()
+    r_squared = 1 - (ss_res / ss_tot)
+
+    # Return results in a dictionary
+    output = {
+        'MAB': mab,
+        'RMSE': rmse,
+        'COR': cor,
+        'R_squared': r_squared,
+    }
+
+    # Print the results with 2.2f format, aligned
+    print("\nStatistics:")
+    for key, value in output.items():
+        print(f"{key:<20}: {value:6.2f}")
+
+    return output
+
+@hydra.main(config_path="./", config_name="benchmark", version_base='1.3')
 def benchmark(cfg: DictConfig) -> None:
     """
     """
     print('start to work ...')
 
-    xr.open_dataset("/Users/ctang/Microsoft_OneDrive/OneDrive/CODE/Wind_cordex/local_data/rsds/rsds_AFR-22_NCC-NorESM1-M_rcp85_r1i1p1_ICTP-RegCM4-7_v0_mon_209101-209912.nc")
+    # ============================= models ======================
+    import xgboost as xgb
 
-    # ============================= read data ===========================
-    data_set_name = './raw.bsrn_lacy.2019_2022.1min.local_time.csv'
-    # data = pd.read_csv(path_data+data_set_name,delim_whitespace = False)
-    df_raw = GEO_PLOT.read_csv_into_df_with_header(data_set_name)
-    print(df_raw.size)
-    df_raw.corr(method='pearson')
-    # ----------------------------  split data:
-    # works on two-year data:
-    train_valid = df_raw['2019-09-13':'2021-09-12']
-    X_train, X_test, y_train, y_test = split(train_valid, 0.1)
+    xgb_default = pickle.load(open(f'../XGBoost/xgb_default.mat', 'rb'))
+    xgb_tuned = pickle.load(open(f'../XGBoost/xgb_tuned.mat', 'rb'))
 
-    # predictors = list(df_raw.columns)
-    # #predictors.remove('P')
-    # #predictors.remove('RH')
-    # predictors.remove('CF')
+    for model in [xgb_default, xgb_tuned]:
+        # learning curve:
+        plot_learning_curve(xgb_default, evalSet=evalSet, fig_name='xgb_default.png')
+        plot_learning_curve(xgb_tuned, evalSet=evalSet, fig_name='xgb_tuned.png')
 
-    # X_train = df_raw['2019-09-13':'2021-09-12'][predictors]
-    # y_train = df_raw['2019-09-13':'2021-09-12'][{'CF'}]
+        # make prediction:
+        xgb_pred = xgb_default.predict(X_test)
+        y_test['CF_pred'] = xgb_pred
 
-    # X_test = df_raw['2021-10-01':'2022-09-28'][predictors]
-    # y_test = df_raw['2021-10-01':'2022-09-28'][{'CF'}]
+        # statistics:
+        stats: dict = calculate_statistics(y_test)
 
-    print(X_train.columns)
-
-    print(X_test.shape)
-    print(X_test)
-
-    # ============================= done read data ======================
-
-    if cfg.job.data.lacy_bsrn:
-        print(f'merge lacy and BSRN')
-
-        # read lacy:
-        lacy = GEO_PLOT.read_csv_into_df_with_header(cfg.file.raw_lacy)
-        bsrn = GEO_PLOT.read_csv_into_df_with_header(cfg.file.raw_bsrn)
-
-        raw = bsrn.merge(lacy, left_index=True, right_index=True)
-
-        # convert to local time
-        raw_local = GEO_PLOT.convert_df_shifttime(raw, 3600 * 4)
-
-        # remove nan:
-        raw_local = raw_local.dropna()
-
-        # missing data check:
-        GEO_PLOT.check_missing_da_df(start='2019-09-13 00:00:00',
-                                     end='2021-09-13 00:00:00',
-                                     # end='2022-08-31 17:53:00',
-                                     output_plot_tag='train_data',
-                                     freq='T', data=raw_local)
-
-        raw_local.to_csv(cfg.file.raw)
-        # more data added. lacy: 2019-09 - 2022-01 and 2022-05 - 2022-09
-
-    if any(GEO_PLOT.get_values_multilevel_dict(dict(cfg.job.lacy))):
-        print(f'analysis the target data')
-        df_raw = GEO_PLOT.read_csv_into_df_with_header(cfg.file.raw)
-
-        # # get 5 min data:
-        # df_raw_5min = df_raw[df_raw.index.minute.isin([0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55])]
-        # df_raw_5min.to_csv(f'./dataset/raw.bsrn_lacy.2019_2022.5min.local_time.csv')
-
-        train = df_raw['2019-09-13':'2021-09-12']['CF']
-        test = df_raw['2021-10-01':'2022-09-28']['CF']
-
-        if cfg.job.lacy.diurnal_annual_cycle:
-            GEO_PLOT.plot_annual_diurnal_cycle_columns_in_df(df=df_raw, columns=['CF'], output_tag='all raw data',
-                                                             vmin=0.25, vmax=1.1, count_bar_plot=1)
-
-        if cfg.job.lacy.complete_check:
-            # check if the density profile are similar:
-            raw_19_20 = df_raw['2019-09-13': '2020-09-12']['CF']
-            raw_20_21 = df_raw['2020-09-13':'2021-09-12']['CF']
-
-            GEO_PLOT.compare_density_profile_df_list(df_list=[raw_19_20, raw_20_21],
-                                                     tag_list=['20190913-20200912', '20200913_20210912'],
-                                                     count_bar_plot=1, cycle='month',
-                                                     output_tag='lacy_test')
-
-            GEO_PLOT.compare_density_profile_df_list(df_list=[train, test],
-                                                     tag_list=['train_20190913-20210912', 'test_20211001_20220928'],
-                                                     count_bar_plot=1, cycle='month',
-                                                     output_tag='lacy data complete')
-
-    if cfg.job.plot_topo:
-        GEO_PLOT.plot_topo_reunion_high_reso(plot=1, output_tag='reu', vmax=3100, plot_max=1, dpi=300)
-
-        GEO_PLOT.plot_topo_reunion_high_reso(plot=1, output_tag='reu_bsrn', vmax=3100, plot_max=1, dpi=300,
-                                             add_point=[55.48, -20.90, 'o', 'Reunion BSRN station'])
-
-        GEO_PLOT.plot_topo_mauritius_high_reso(plot=1, vmax=800, output_tag='mauritius', plot_max=1, dpi=300)
-
-        GEO_PLOT.plot_topo_mauritius_high_reso(plot=1, vmax=3100, output_tag='mauritius_in_reunion_cbar', dpi=200,
-                                               plot_max=1)
-
-    if cfg.job.apcada:
-
-        # loading data:
-        # all the data are used to select clear-sky conditions; and to fit apacada coefficients
-        df_raw = GEO_PLOT.read_csv_into_df_with_header(cfg.file.raw)
-
-        clear_sky_radiation = GEO_PLOT.value_clearsky_radiation_df(
-            times=df_raw.index, lon=55.5, lat=-21.1, model='climatology', show=1)
-
-        from pvlib import clearsky
-
-        df_raw['ghi'] = clear_sky_radiation['ghi'].values
-
-        df_cs = df_raw[{'GSW', 'ghi'}].resample('60S').bfill()
-
-        clear_samples = clearsky.detect_clearsky(df_cs['GSW'],
-                                                 df_cs['ghi'],
-                                                 df_cs.index, 10)
-
-        df_cs['clear'] = clear_samples.values
-
-        cs_mask: pd.DataFrame = df_cs.loc[df_raw.index]
-
-
-    if cfg.job.result_analysis:
-        # plot first week:
-        RESEARCH.compare_curves(df_valid['2021-01-04': '2021-01-10'], output_tag='raw')
-
-        # correlation:
-        RESEARCH.plot_corr(df_valid)
-        cor = df_valid.corr()
-        print(cor)
-
-        # smooth of CF_APCADA
-        from scipy.signal import savgol_filter
-
-        df_valid.insert(0, 'CF_APCADA_smooth', savgol_filter(df_valid.CF_APCADA, window_length=25, polyorder=3))
-        # ct_learn: replace value with condition:
-        df_valid = df_valid.where(df_valid['CF_APCADA_smooth'] <= 1, other=1)
-
-        RESEARCH.compare_curves(df_valid[{'CF_APCADA_smooth', 'CF_APCADA'}]['2021-01-04': '2021-01-07'],
-                                output_tag='smoothed')
-        cor = df_valid[{'CF_APCADA_smooth', 'CF_APCADA', 'CF_XGB', 'CF_OBS'}].corr()
-        print(cor)
-
-        # ct_learn: new column
-        df_valid.insert(0, column='bias_XGB', value=df_valid['CF_XGB'] - df_valid['CF_OBS'])
-        df_valid = df_valid.assign(bias_APCADA=df_valid['CF_APCADA'] - df_valid['CF_OBS'])
-
-        RESEARCH.compare_curves(df_valid['2021-01-04': '2021-01-07'], output_tag='smoothed_with_bias')
-        cor = df_valid[{'CF_APCADA_smooth', 'CF_APCADA', 'CF_OBS', 'CF_XGB'}].corr()
-        print(cor)
-
-        # normality
-        RESEARCH.check_normal(df_valid[{'CF_APCADA'}], output_tag='check.normal')
-        RESEARCH.check_normal(df_valid[{'CF_OBS'}], output_tag='CF_OBS')
-        RESEARCH.check_normal(df_valid[{'CF_XGB'}], output_tag='check.normal')
-
-    if cfg.job.valid.by_hour:
-        # bias distribution
-        RESEARCH.check_normal(df_valid[{'bias_XGB'}], output_tag='bias_XGB')
-        RESEARCH.check_normal(df_valid[{'bias_APCADA'}], output_tag='bias_APCADA')
-
-        # hourly validation:
-        df_valid.plot(kind='')
-        df_valid[{'bias_XGB', 'bias_APCADA'}].groupby(df_valid.index.hour).mean().plot(kind='bar')
-        plt.title(f'hourly mean bias')
-        plt.savefig(f'./plot/bias_in_hour.png', dpi=300)
-        plt.show()
-
-    if cfg.job.valid.by_height:
-        # to prepare ct, and merge it to the df_valid:
-        # ct = pd.read_pickle(cfg.file.ct_SAF_NWC_moufia)
-        # RESEARCH.add_ct_for_validation(df_valid, ct)
-        ct = pd.read_pickle(cfg.file.data_valid_ct)
-
-        # limit the time difference between lacy obs and saf_nwc data:
-        ct2 = ct[ct.diff_minute < 8]
-        print(f'{len(ct2) / len(ct) * 100: 4.2f}% are with in 8 minutes')
-
-        # prepare data for violin:
-        df3 = pd.DataFrame(pd.concat([ct2['ct'], ct2['ct']]))
-        df3.insert(0, 'bias', np.concatenate([ct2['bias_XGB'].values, ct2['bias_APCADA'].values]))
-        df3.insert(0, 'method', ['XGBoost' for x in range(len(ct2))] + ['APCADA' for i in range(len(ct2))])
-
-        GEO_PLOT.plot_violin_df_1D(df=df3, x='ct', y='bias', y_unit='unitless', x_label='cloud types', hue='method',
-                                   y_label='bias vs LACy CF', split=False, scale='area', inner='box', add_number=True,
-                                   x_ticks_labels=['clearsky', 'vLow', 'Low', 'Med', 'HOp', 'vHOp', 'sTp'],
-                                   suptitle_add_word='test')
-        del df3
-
-        print(f'good')
-
-    if cfg.job.valid.by_octas:
-        df_valid.insert(0, 'OBS_octas', GEO_PLOT.convert_cf_to_octas(df_valid.CF_OBS.values))
-        df_valid.insert(0, 'XGB_octas', GEO_PLOT.convert_cf_to_octas(df_valid.CF_XGB.values))
-
-        df4 = df_valid[{'XGB_octas'}]
-        df4.insert(0, 'CF_XGB', df_valid.CF_XGB * 8)
-        RESEARCH.compare_curves(df4[{'XGB_octas', 'CF_XGB'}]['2021-01-04': '2021-01-07'], output_tag='octas')
-        del df4
-
-        RESEARCH.valid_by_octas(df_valid)
-
-        print(f'convert to octas')
-
-    if any(GEO_PLOT.get_values_multilevel_dict(dict(cfg.job.data))):
+    if any(GEO_PLOT.get_values_multilevel_dict(dict(cfg.job))):
         print('start to work...')
 
 
