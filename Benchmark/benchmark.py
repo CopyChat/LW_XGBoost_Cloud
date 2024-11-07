@@ -28,10 +28,20 @@ import pandas as pd
 import GEO_PLOT
 import RESEARCH
 import PUBLISH
+from sklearn.model_selection import train_test_split
 
 
-@hydra.main(config_path="configs", config_name="config")
-def cloud(cfg: DictConfig) -> None:
+# functions:
+def split(data, tst_sz):
+    y = data["CF"]
+    X = data.drop("CF" , axis=1)
+    # X = X.drop("timestamp" , axis=1)
+    X_train, X_test, y_train, y_test = train_test_split(X,y, test_size=tst_sz, random_state=7)
+    return X_train, X_test, y_train, y_test
+
+
+@hydra.main(config_path="configs", config_name="benchmark")
+def benchmark(cfg: DictConfig) -> None:
     """
     """
     print('start to work ...')
@@ -39,8 +49,31 @@ def cloud(cfg: DictConfig) -> None:
     xr.open_dataset("/Users/ctang/Microsoft_OneDrive/OneDrive/CODE/Wind_cordex/local_data/rsds/rsds_AFR-22_NCC-NorESM1-M_rcp85_r1i1p1_ICTP-RegCM4-7_v0_mon_209101-209912.nc")
 
     # ============================= read data ===========================
-    df_raw = 'dd'
-    # split data:
+    data_set_name = './raw.bsrn_lacy.2019_2022.1min.local_time.csv'
+    # data = pd.read_csv(path_data+data_set_name,delim_whitespace = False)
+    df_raw = GEO_PLOT.read_csv_into_df_with_header(data_set_name)
+    print(df_raw.size)
+    df_raw.corr(method='pearson')
+    # ----------------------------  split data:
+    # works on two-year data:
+    train_valid = df_raw['2019-09-13':'2021-09-12']
+    X_train, X_test, y_train, y_test = split(train_valid, 0.1)
+
+    # predictors = list(df_raw.columns)
+    # #predictors.remove('P')
+    # #predictors.remove('RH')
+    # predictors.remove('CF')
+
+    # X_train = df_raw['2019-09-13':'2021-09-12'][predictors]
+    # y_train = df_raw['2019-09-13':'2021-09-12'][{'CF'}]
+
+    # X_test = df_raw['2021-10-01':'2022-09-28'][predictors]
+    # y_test = df_raw['2021-10-01':'2022-09-28'][{'CF'}]
+
+    print(X_train.columns)
+
+    print(X_test.shape)
+    print(X_test)
 
     # ============================= done read data ======================
 
@@ -221,4 +254,4 @@ def cloud(cfg: DictConfig) -> None:
 
 
 if __name__ == "__main__":
-    sys.exit(cloud())
+    sys.exit(benchmark())
