@@ -10,6 +10,9 @@ __version__ = f'Version 1.0  \nTime-stamp: <2024-11-06>'
 __author__ = "ChaoTANG@univ-reunion.fr"
 
 import sys
+import joblib
+from tensorflow.keras.models import load_model
+from scipy.stats import pearsonr
 import hydra
 from omegaconf import DictConfig
 import numpy as np
@@ -72,6 +75,68 @@ evalSet = [(X_train, y_train), (X_valid, y_valid)]
 
 # ============================= done of read data ===========================
 # functions:
+
+def ann_model_train(model_save:str):
+    """
+    build an ANN model and train
+    :return:
+    """
+    import tensorflow as tf
+    from tensorflow.keras import Input
+    from tensorflow.keras.models import Sequential
+    from tensorflow.keras.layers import Dense
+    from tensorflow.keras.metrics import RootMeanSquaredError
+    from tensorflow.keras.losses import MeanSquaredError
+    from tensorflow.keras.optimizers import Adam
+
+    # Define the model
+    model = Sequential([
+        Input(shape=(7,)),  # Explicit input layer with 7 features
+        Dense(64, activation='relu'),
+        Dense(32, activation='relu'),
+        Dense(1)
+    ])
+
+    # Compile the model
+    model.compile(optimizer=Adam(learning_rate=0.0001), loss=MeanSquaredError(), metrics=[RootMeanSquaredError()])
+
+    # Train the model
+    history = model.fit(
+        X_train, y_train,
+        validation_data=(X_valid, y_valid),
+        epochs=200,
+        batch_size=3200,
+        verbose=1
+    )
+
+    # Extract RMSE values
+    train_rmse = history.history['root_mean_squared_error']
+    val_rmse = history.history['val_root_mean_squared_error']
+
+    # Plot RMSE learning curve
+    plt.figure(figsize=(10, 6))
+    plt.plot(train_rmse, label='Training RMSE')
+    plt.plot(val_rmse, label='Validation RMSE')
+    # plt.xlabel('Epochs')
+    # plt.ylabel('RMSE')
+    plt.title('Learning Curve RMSE')
+    plt.ylim(0, 5)
+    plt.legend()
+    plt.savefig(f'./ann_trained.png')
+    plt.show()
+
+    # save the tuned model
+    # Save the model in .h5 format
+    model.save(model_save)  # This will save both architecture and weights
+
+    # Load the model
+    loaded_model = load_model(model_save)
+    # loaded_model = load_model(ann_model, custom_objects={'rmse': rmse})
+
+    # Make predictions on X_test
+    predictions = loaded_model.predict(X_test)
+
+    return loaded_model
 
 def my_learning_curve(model, X_train, X_test, y_train, y_test,fig_name):
     scr_train = round(model.score(X_train, y_train),4)
@@ -138,9 +203,6 @@ def plot_learning_curve(model, evalSet, fig_name='learning_curve.png'):
     plt.show()
 
 
-from scipy.stats import pearsonr
-
-
 def calculate_statistics(df):
     # Ensure required columns are present
     if not {'CF', 'CF_pred'}.issubset(df.columns):
@@ -181,6 +243,78 @@ def calculate_statistics(df):
 
     return output
 
+
+def rf_model_train(model_save: str):
+    import sklearn  # Import to access version
+    from sklearn.ensemble import RandomForestRegressor
+    from sklearn.metrics import mean_squared_error
+    from sklearn.model_selection import learning_curve
+
+    # Step 1: Define XGBoost parameters (for reference)
+    # that is the params optimised by the code in ../XGBoost at Google Colab using GPUs
+    # the CPU version may be different
+    xgb_params = {
+        'base_score': 0.5,
+        'colsample_bytree': 0.8,
+        'learning_rate': 0.2,
+        'max_depth': 10,
+        'min_child_weight': 50,
+        'n_estimators': 200,
+        'subsample': 0.9,
+        'reg_alpha': 10,
+        'reg_lambda': 0,
+    }
+
+    # Step 2: Create a similar Random Forest Regressor
+    rf_params = {
+        'n_estimators': xgb_params['n_estimators'],  # Match number of trees
+        'max_depth': xgb_params['max_depth'],  # Similar depth
+        'max_features': xgb_params['colsample_bytree'],  # Approximate colsample_bytree
+        'min_samples_split': xgb_params['min_child_weight'],  # Approximate min_child_weight
+        'random_state': 42,  # For reproducibility
+    }
+
+    rf_model = RandomForestRegressor(**rf_params)
+
+    print(f'Train the model on X_train, y_train')
+    rf_model.fit(X_train, y_train)
+
+    print(f'Learning curve validation by RMSE')
+    train_sizes, train_scores, valid_scores = learning_curve(
+        rf_model, X_train, y_train, cv=5, scoring="neg_root_mean_squared_error",
+        train_sizes = np.linspace(0.1, 1.0, 5), n_jobs=-1)
+
+    train_rmse = -train_scores.mean(axis=1)
+    valid_rmse = -valid_scores.mean(axis=1)
+
+    # Plotting learning curve
+    plt.figure(figsize=(10, 6))
+    plt.plot(train_sizes, train_rmse, label="Training score: ")
+    plt.plot(train_sizes, valid_rmse, label="Validation RMSE")
+    plt.xlabel("Training Set Size")
+    plt.ylabel("RMSE")
+    plt.title("Learning Curve for Random Forest Regressor")
+    plt.savefig('./rf_trained.png')
+    plt.legend()
+    plt.show()
+
+    # Step 5: Evaluate on X_test, y_test using RMSE
+    y_test_pred = rf_model.predict(X_test)
+    test_rmse = np.sqrt(mean_squared_error(y_test, y_test_pred))
+    print(f"Test RMSE: {test_rmse:.4f}")
+
+    # Step 6: Save the model with version information (sklearn version)
+    sklearn_version = sklearn.__version__  # Retrieve sklearn version
+    model_filename = f"{model_save}.joblib"
+    joblib.dump((rf_model, sklearn_version), model_filename)
+
+    # Step 7: Reload the model for further use
+    loaded_model, loaded_version = joblib.load(model_filename)
+    print(f"Loaded model version (scikit-learn): {loaded_version}")
+
+    return loaded_model
+
+
 @hydra.main(config_path="./", config_name="benchmark", version_base='1.3')
 def benchmark(cfg: DictConfig) -> None:
     """
@@ -188,22 +322,39 @@ def benchmark(cfg: DictConfig) -> None:
     print('start to work ...')
 
     # ============================= models ======================
-    import xgboost as xgb
 
+    # -------------- RF --------------
+    # rf_trained = rf_model_train(cfg.model.rf_model_select)
+
+    rf_trained, rf_version = joblib.load(cfg.model.rf_model_select)
+
+    # -------------- xgb --------------
     xgb_default = pickle.load(open(f'../XGBoost/xgb_default.mat', 'rb'))
     xgb_tuned = pickle.load(open(f'../XGBoost/xgb_tuned.mat', 'rb'))
 
-    for model in [xgb_default, xgb_tuned]:
-        # learning curve:
-        plot_learning_curve(xgb_default, evalSet=evalSet, fig_name='xgb_default.png')
-        plot_learning_curve(xgb_tuned, evalSet=evalSet, fig_name='xgb_tuned.png')
+    # plot_learning_curve(xgb_default, evalSet=evalSet, fig_name='xgb_default.png')
+    # plot_learning_curve(xgb_tuned, evalSet=evalSet, fig_name='xgb_tuned.png')
+
+    # -------------- ann --------------
+    # ann_trained = ann_model_train(cfg.model.ann_model_select)
+    ann_trained = load_model(cfg.model.ann_model_select)
+
+    # -------------- ann --------------
+
+    # -------------- ann --------------
+
+    # ============================= models ======================
+    # loop foa all models:
+    y_test2 = y_test.copy()
+    for model in [xgb_default, xgb_tuned, ann_trained, rf_trained]:
 
         # make prediction:
-        xgb_pred = xgb_default.predict(X_test)
-        y_test['CF_pred'] = xgb_pred
+        pred = model.predict(X_test)
+        y_test2['CF_pred'] = pred
 
-        # statistics:
-        stats: dict = calculate_statistics(y_test)
+        # statistics with true values:
+        stats: dict = calculate_statistics(y_test2)
+        print(y_test2.max(), y_test2.min(), y_test2.mean(), y_test2.std())
 
     if any(GEO_PLOT.get_values_multilevel_dict(dict(cfg.job))):
         print('start to work...')

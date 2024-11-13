@@ -363,7 +363,7 @@ def query_data(mysql_query: str, remove_missing_data=True):
     return df
 
 
-@hydra.main(config_path="configs", config_name="config.ctang")
+@hydra.main(config_path="configs", config_name="config.ctang", version_base='1.3')
 def query_influxdb(cfg: DictConfig, query: str):
     """
     select data from DataBase
@@ -7097,7 +7097,7 @@ def read_to_standard_da(file_path: str, var: str, timezone_str: str = 'default')
 
     """
 
-    ds = xr.open_dataset(file_path)
+    ds = xr.open_dataset(file_path, engine='netcdf4')
 
     da = ds[var]
 
