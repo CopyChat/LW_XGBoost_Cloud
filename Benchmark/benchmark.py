@@ -45,7 +45,7 @@ def split(data, tst_sz):
 # Global constant definition (naming in uppercase)
 
 # ============================= read data ===========================
-data_set_name = '../dataset/raw.bsrn_lacy.2019_2022.1min.local_time.csv'
+data_set_name = '../dataset/raw.bsrn_lacy.2019_2022.5min.local_time.csv'
 # data = pd.read_csv(path_data+data_set_name,delim_whitespace = False)
 df_raw = GEO_PLOT.read_csv_into_df_with_header(data_set_name)
 print(df_raw.size)
@@ -84,7 +84,7 @@ def ann_model_train(model_save:str):
     import tensorflow as tf
     from tensorflow.keras import Input
     from tensorflow.keras.models import Sequential
-    from tensorflow.keras.layers import Dense
+    from tensorflow.keras.layers import Dense, Dropout
     from tensorflow.keras.metrics import RootMeanSquaredError
     from tensorflow.keras.losses import MeanSquaredError
     from tensorflow.keras.optimizers import Adam
@@ -98,14 +98,14 @@ def ann_model_train(model_save:str):
     ])
 
     # Compile the model
-    model.compile(optimizer=Adam(learning_rate=0.0001), loss=MeanSquaredError(), metrics=[RootMeanSquaredError()])
+    model.compile(optimizer=Adam(learning_rate=0.01), loss=MeanSquaredError(), metrics=[RootMeanSquaredError()])
 
     # Train the model
     history = model.fit(
         X_train, y_train,
         validation_data=(X_valid, y_valid),
-        epochs=200,
-        batch_size=3200,
+        epochs=150,
+        batch_size=512,
         verbose=1
     )
 
@@ -281,7 +281,7 @@ def rf_model_train(model_save: str):
 
     print(f'Learning curve validation by RMSE')
     train_sizes, train_scores, valid_scores = learning_curve(
-        rf_model, X_train, y_train, cv=5, scoring="neg_root_mean_squared_error",
+        rf_model, X_train, y_train, cv=10, scoring="neg_root_mean_squared_error",
         train_sizes = np.linspace(0.1, 1.0, 5), n_jobs=-1)
 
     train_rmse = -train_scores.mean(axis=1)
@@ -294,8 +294,8 @@ def rf_model_train(model_save: str):
     plt.xlabel("Training Set Size")
     plt.ylabel("RMSE")
     plt.title("Learning Curve for Random Forest Regressor")
-    plt.savefig('./rf_trained.png')
     plt.legend()
+    plt.savefig('./rf_trained.png')
     plt.show()
 
     # Step 5: Evaluate on X_test, y_test using RMSE
@@ -305,7 +305,7 @@ def rf_model_train(model_save: str):
 
     # Step 6: Save the model with version information (sklearn version)
     sklearn_version = sklearn.__version__  # Retrieve sklearn version
-    model_filename = f"{model_save}.joblib"
+    model_filename = f"{model_save}"
     joblib.dump((rf_model, sklearn_version), model_filename)
 
     # Step 7: Reload the model for further use
@@ -325,18 +325,18 @@ def benchmark(cfg: DictConfig) -> None:
 
     # -------------- RF --------------
     # rf_trained = rf_model_train(cfg.model.rf_model_select)
-
     rf_trained, rf_version = joblib.load(cfg.model.rf_model_select)
 
     # -------------- xgb --------------
-    xgb_default = pickle.load(open(f'../XGBoost/xgb_default.mat', 'rb'))
-    xgb_tuned = pickle.load(open(f'../XGBoost/xgb_tuned.mat', 'rb'))
+
+    xgb_default, xgboost_version, sklearn_version = joblib.load('../XGBoost/xgb_default.joblib')
+    xgb_tuned, xgboost_version, sklearn_version = joblib.load(f'../XGBoost/xgb_tuned.joblib')
 
     # plot_learning_curve(xgb_default, evalSet=evalSet, fig_name='xgb_default.png')
     # plot_learning_curve(xgb_tuned, evalSet=evalSet, fig_name='xgb_tuned.png')
 
     # -------------- ann --------------
-    # ann_trained = ann_model_train(cfg.model.ann_model_select)
+    ann_trained = ann_model_train(cfg.model.ann_model_select)
     ann_trained = load_model(cfg.model.ann_model_select)
 
     # -------------- ann --------------
@@ -346,7 +346,11 @@ def benchmark(cfg: DictConfig) -> None:
     # ============================= models ======================
     # loop foa all models:
     y_test2 = y_test.copy()
-    for model in [xgb_default, xgb_tuned, ann_trained, rf_trained]:
+    model_list = [xgb_default, xgb_tuned, ann_trained, rf_trained]
+    model_name = ['xgb_default', 'xgb_tuned', 'ANN', 'RF']
+    for model, name in zip(model_list, model_name):
+
+        print(f'------------------ {name} ----------')
 
         # make prediction:
         pred = model.predict(X_test)
@@ -354,7 +358,6 @@ def benchmark(cfg: DictConfig) -> None:
 
         # statistics with true values:
         stats: dict = calculate_statistics(y_test2)
-        print(y_test2.max(), y_test2.min(), y_test2.mean(), y_test2.std())
 
     if any(GEO_PLOT.get_values_multilevel_dict(dict(cfg.job))):
         print('start to work...')
