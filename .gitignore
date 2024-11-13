@@ -56,3 +56,6 @@ doc/.DS_Store
 /XGBoost/backup/Without_Pressure
 /XGBoost/backup/Without_Pressure.png
 /dataset/raw.bsrn_lacy.2019_2022.1min.local_time.csv
+/Benchmark/.hydra/config.yaml
+/Benchmark/.hydra/hydra.yaml
+/Benchmark/.hydra/overrides.yaml
