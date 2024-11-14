@@ -71,12 +71,23 @@ print(X_train.columns)
 # data for training and valid, to verify model.
 # only train data is used for searching parameter with CV.
 # define evalSet for monitoring train and valid process for early_stopping and overfitting.
+
+# Fit scaler on training data only
+from sklearn.preprocessing import StandardScaler
+
+scaler = StandardScaler()
+X_train_scaled = scaler.fit_transform(X_train)
+
+# Transform test data using the fitted scaler
+X_valid_scaled = scaler.transform(X_valid)
+X_test_scaled = scaler.transform(X_test)
+
 evalSet = [(X_train, y_train), (X_valid, y_valid)]
 
 # ============================= done of read data ===========================
 # functions:
 
-def ann_model_train(model_save:str):
+def ann_model_train(X_train, X_valid, X_test, model_save:str):
     """
     build an ANN model and train
     :return:
@@ -98,13 +109,13 @@ def ann_model_train(model_save:str):
     ])
 
     # Compile the model
-    model.compile(optimizer=Adam(learning_rate=0.01), loss=MeanSquaredError(), metrics=[RootMeanSquaredError()])
+    model.compile(optimizer=Adam(learning_rate=0.001), loss=MeanSquaredError(), metrics=[RootMeanSquaredError()])
 
     # Train the model
     history = model.fit(
         X_train, y_train,
         validation_data=(X_valid, y_valid),
-        epochs=150,
+        epochs=100,
         batch_size=512,
         verbose=1
     )
@@ -120,7 +131,6 @@ def ann_model_train(model_save:str):
     # plt.xlabel('Epochs')
     # plt.ylabel('RMSE')
     plt.title('Learning Curve RMSE')
-    plt.ylim(0, 5)
     plt.legend()
     plt.savefig(f'./ann_trained.png')
     plt.show()
@@ -165,7 +175,7 @@ def upgrade_model(model, param_name, param_value):
     model.set_params(**params)
     print(f'new {param_name} is: {model.get_params()[param_name]}')
 
-def upgrade_model_and_plot(model, param_name, param_value):
+def upgrade_model_and_plot(model, param_name, param_value, fig_name):
     # upgrade model parameter:
     upgrade_model(model, param_name, param_value)
 
@@ -315,6 +325,69 @@ def rf_model_train(model_save: str):
     return loaded_model
 
 
+def svm_model_train(X_train, X_valid, X_test, model_save: str):
+    from sklearn.svm import SVR
+    from sklearn.model_selection import train_test_split, learning_curve
+    from sklearn.metrics import mean_squared_error
+
+    # 初始化SVM回归模型
+    svm_model = SVR(kernel='rbf', C=1.0, epsilon=0.1)
+
+    print(f'training')
+    svm_model.fit(X_train, y_train)
+
+    print(f'使用learning_curve函数计算训练集和验证集的分数')
+    train_sizes, train_scores, valid_scores = learning_curve(
+        estimator=svm_model,
+        X=X_train_scaled,
+        y=y_train,
+        cv=5,  # 5折交叉验证
+        scoring="neg_root_mean_squared_error",  # 使用负RMSE
+        n_jobs=-1,
+        train_sizes=np.linspace(0.1, 1.0, 10)  # 训练集大小从10%到100%
+    )
+
+    # 将负RMSE转换为正RMSE
+    train_rmse = -train_scores
+    valid_rmse = -valid_scores
+
+    # 计算训练和验证RMSE的均值和标准差
+    train_rmse_mean = train_rmse.mean(axis=1)
+    train_rmse_std = train_rmse.std(axis=1)
+    valid_rmse_mean = valid_rmse.mean(axis=1)
+    valid_rmse_std = valid_rmse.std(axis=1)
+
+    # 绘制学习曲线
+    plt.figure(figsize=(10, 6))
+    plt.plot(train_sizes, train_rmse_mean, 'o-', color="blue", label="Training RMSE")
+    plt.plot(train_sizes, valid_rmse_mean, 'o-', color="green", label="Validation RMSE")
+
+    # 绘制误差范围
+    plt.fill_between(train_sizes, train_rmse_mean - train_rmse_std, train_rmse_mean + train_rmse_std, alpha=0.2,
+                     color="blue")
+    plt.fill_between(train_sizes, valid_rmse_mean - valid_rmse_std, valid_rmse_mean + valid_rmse_std, alpha=0.2,
+                     color="green")
+
+    # 设置图形标题和标签
+    plt.xlabel("Training Set Size")
+    plt.ylabel("RMSE")
+    plt.title("Learning Curve for SVM Regressor (RMSE)")
+    plt.legend(loc="best")
+    plt.grid()
+    plt.savefig('./svm_trained.png')
+    plt.show()
+
+    # save model
+    joblib.dump(svm_model, 'svm_trained.joblib')
+
+    loaded_model = joblib.load('svm_trained.joblib')
+
+    # 使用加载的模型进行预测
+    y_loaded_pred = loaded_model.predict(X_test)
+
+    return svm_model
+
+
 @hydra.main(config_path="./", config_name="benchmark", version_base='1.3')
 def benchmark(cfg: DictConfig) -> None:
     """
@@ -323,37 +396,41 @@ def benchmark(cfg: DictConfig) -> None:
 
     # ============================= models ======================
 
+    # -------------- linear regressor --------------
+
+    # -------------- ann --------------
+    # ann_trained = ann_model_train(X_train_scaled, X_valid_scaled, X_test_scaled, cfg.model.ann_model_select)
+    ann_trained = load_model(cfg.model.ann_model_select)
+
+    # -------------- SVM --------------
+    # svm_trained = svm_model_train(X_train_scaled, X_valid_scaled, X_test_scaled, cfg.model.svm_model_select)
+    svm_trained= joblib.load(cfg.model.svm_model_select)
+
     # -------------- RF --------------
     # rf_trained = rf_model_train(cfg.model.rf_model_select)
     rf_trained, rf_version = joblib.load(cfg.model.rf_model_select)
 
     # -------------- xgb --------------
-
     xgb_default, xgboost_version, sklearn_version = joblib.load('../XGBoost/xgb_default.joblib')
     xgb_tuned, xgboost_version, sklearn_version = joblib.load(f'../XGBoost/xgb_tuned.joblib')
 
     # plot_learning_curve(xgb_default, evalSet=evalSet, fig_name='xgb_default.png')
     # plot_learning_curve(xgb_tuned, evalSet=evalSet, fig_name='xgb_tuned.png')
 
-    # -------------- ann --------------
-    ann_trained = ann_model_train(cfg.model.ann_model_select)
-    ann_trained = load_model(cfg.model.ann_model_select)
-
-    # -------------- ann --------------
-
-    # -------------- ann --------------
-
     # ============================= models ======================
     # loop foa all models:
     y_test2 = y_test.copy()
-    model_list = [xgb_default, xgb_tuned, ann_trained, rf_trained]
-    model_name = ['xgb_default', 'xgb_tuned', 'ANN', 'RF']
+    model_list = [xgb_default, xgb_tuned, rf_trained, ann_trained, svm_trained]
+    model_name = ['xgb_default', 'xgb_tuned', 'RF', 'ANN','SVM']
     for model, name in zip(model_list, model_name):
 
         print(f'------------------ {name} ----------')
 
         # make prediction:
-        pred = model.predict(X_test)
+        if name in ['ANN', 'SVM']:
+            pred = model.predict(X_test_scaled)
+        else:
+            pred = model.predict(X_test)
         y_test2['CF_pred'] = pred
 
         # statistics with true values:
