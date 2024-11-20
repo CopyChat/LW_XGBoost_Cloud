@@ -17,6 +17,111 @@ import pandas as pd
 
 import GEO_PLOT
 
+from sklearn.model_selection import train_test_split
+
+def split(data, tst_sz):
+    y = data["CF"]
+    X = data.drop("CF" , axis=1)
+    # X = X.drop("timestamp" , axis=1)
+    X_train, X_test, y_train, y_test = train_test_split(X,y, test_size=tst_sz, random_state=7)
+    return X_train, X_test, y_train, y_test
+
+# Global data:
+# Global constant definition (naming in uppercase)
+def prepare_data(train_valid_rate=0.1):
+    """
+    get data ready for ML models
+    :return:
+    """
+    # ============================= read data ===========================
+    path = f'/Users/ctang/Microsoft_OneDrive/OneDrive/CODE/LW_XGBoost_Cloud'
+    data_set_name = f'{path}/dataset/raw.bsrn_lacy.2019_2022.5min.local_time.csv'
+    df_raw = GEO_PLOT.read_csv_into_df_with_header(data_set_name)
+
+    # ----------------------------  split data:
+    # works on two-year data:
+    # for training (SearchGrid and CV) and valid
+    train_valid = df_raw['2019-09-13':'2021-09-12']
+    X_train, X_valid, y_train, y_valid = split(train_valid, 0.1)
+
+    # valid set do not directly participate in the training, but only for monitoring and validation and early_stop.
+
+    predictors = list(df_raw.columns)
+    # #predictors.remove('P')
+    # #predictors.remove('RH')
+    predictors.remove('CF')
+
+    X_test = df_raw['2021-10-01':'2022-09-28'][predictors]
+    y_test = df_raw['2021-10-01':'2022-09-28'][['CF']]
+
+    print(X_train.columns)
+
+    # data for training and valid, to verify model.
+    # only train data is used for searching parameter with CV.
+    # define evalSet for monitoring train and valid process for early_stopping and overfitting.
+
+    # Fit scaler on training data only
+    from sklearn.preprocessing import StandardScaler
+
+    scaler = StandardScaler()
+    X_train_scaled = scaler.fit_transform(X_train)
+
+    # Transform test data using the fitted scaler
+    X_valid_scaled = scaler.transform(X_valid)
+    X_test_scaled = scaler.transform(X_test)
+
+    evalSet = [(X_train, y_train), (X_valid, y_valid)]
+
+    return X_train, y_train, X_valid, y_valid,  X_test, y_test, X_train_scaled, X_valid_scaled, X_test_scaled, evalSet
+
+
+def calculate_statistics_y_pred_y_test(df):
+    """
+    default columns names are 'CF', 'CF_pred'
+    :param df:
+    :return:
+    """
+    from scipy.stats import pearsonr
+
+    # Ensure required columns are present
+    if not {'CF', 'CF_pred'}.issubset(df.columns):
+        raise ValueError("DataFrame must contain 'CF' and 'CF_pred' columns.")
+
+    # Drop missing values to avoid errors in calculations
+    df = df[['CF', 'CF_pred']].dropna()
+
+    # Calculate RMSE
+    rmse = np.sqrt(((df['CF'] - df['CF_pred']) ** 2).mean())
+
+    # Calculate MAB (Mean Absolute Bias)
+    mab = (df['CF'] - df['CF_pred']).abs().mean()
+
+    # Calculate COR (Pearson Correlation Coefficient)
+    cor, _ = pearsonr(df['CF'], df['CF_pred'])
+
+    # Calculate MES (Mean Error Square)
+    mes = ((df['CF'] - df['CF_pred']) ** 2).mean()
+
+    # Calculate R^2 (Coefficient of Determination)
+    ss_res = ((df['CF'] - df['CF_pred']) ** 2).sum()
+    ss_tot = ((df['CF'] - df['CF'].mean()) ** 2).sum()
+    r_squared = 1 - (ss_res / ss_tot)
+
+    # Return results in a dictionary
+    output = {
+        'MAB': mab,
+        'RMSE': rmse,
+        'COR': cor,
+        'R_squared': r_squared,
+    }
+
+    # Print the results with 2.2f format, aligned
+    print("\nStatistics:")
+    for key, value in output.items():
+        print(f"{key:<20}: {value:6.2f}")
+
+    return output
+
 
 def compare_curves(df: pd.DataFrame, output_tag: str = None):
     var = df.columns.to_list()

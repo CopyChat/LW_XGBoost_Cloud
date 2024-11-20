@@ -1,0 +1,27 @@
+# @package _global_
+
+hydra:
+  run:
+    # Output directory for normal run
+#    dir: ./outputs/${now:%Y-%m-%d_%H-%M-%S}
+    dir: .
+
+job:
+ Stepwise_Feature_Elimination: 1
+
+model:
+  xgb_tuned: ../XGBoost/xgb_tuned.mat
+  ann_model_select: ./ann_trained.keras
+  rf_model_select: ./rf_trained.joblib
+  svm_model_select: ./svm_trained.joblib
+
+file:
+  raw: ../dataset/raw.bsrn_lacy.2019_2022.1min.local_time.csv
+
+
+
+
+
+
+
+

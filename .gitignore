@@ -59,3 +59,7 @@ doc/.DS_Store
 /Benchmark/.hydra/config.yaml
 /Benchmark/.hydra/hydra.yaml
 /Benchmark/.hydra/overrides.yaml
+/feature/.hydra/config.yaml
+/feature/feature.log
+/feature/.hydra/hydra.yaml
+/feature/.hydra/overrides.yaml
