@@ -93,7 +93,7 @@ def feature(cfg: DictConfig) -> None:
             interaction_constraints='', validate_parameters=1, verbosity=None)
 
 
-        # TODO: change the order according to the feature importance from default xgboost model, figure in ./XGBoost
+        # change the order according to the feature importance from default xgboost model, figure in ./XGBoost
         features_to_keep =['LWdn', 'SWDif', 'SWDir', 'T', 'RH', 'GSW', 'P']
 
         # initial variables
