@@ -148,7 +148,6 @@ def ann_model_train(X_train, X_valid, X_test, model_save:str):
 
     return loaded_model
 
-def my_learning_curve(model, X_train, X_test, y_train, y_test,fig_name):
     scr_train = round(model.score(X_train, y_train),4)
     scr_test  = round(model.score(X_test, y_test),4)
     y_pred   = model.predict(X_test)
@@ -174,13 +173,6 @@ def upgrade_model(model, param_name, param_value):
     params = {param_name: param_value}
     model.set_params(**params)
     print(f'new {param_name} is: {model.get_params()[param_name]}')
-
-def upgrade_model_and_plot(model, param_name, param_value, fig_name):
-    # upgrade model parameter:
-    upgrade_model(model, param_name, param_value)
-
-    model.fit(X_train, y_train, eval_set=evalSet)
-    my_learning_curve(model, X_train, X_valid, y_train, y_valid, fig_name)
 
 def plot_learning_curve(model, evalSet, fig_name='learning_curve.png'):
     """
