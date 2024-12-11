@@ -95,6 +95,7 @@ def feature(cfg: DictConfig) -> None:
 
         # change the order according to the feature importance from default xgboost model, figure in ./XGBoost
         features_to_keep =['LWdn', 'SWDif', 'SWDir', 'T', 'RH', 'GSW', 'P']
+        features_to_keep =['GSW', 'SWDif', 'SWDir', 'T', 'RH', 'P', 'LWdn']
 
         # initial variables
         mab, rmse, cor, r_squared = [], [], [], []
@@ -155,7 +156,7 @@ def feature(cfg: DictConfig) -> None:
         plt.text(0.45, 0.5, model_params, fontsize=12, color='black', transform=plt.gca().transAxes,
                  bbox=props, horizontalalignment='center', verticalalignment='center', wrap=True)
 
-        plt.savefig(f'Stepwise_Feature_Elimination_xgb_default.png', dpi=220)
+        plt.savefig(f'Stepwise_Feature_Elimination_xgb_default.2.png', dpi=220)
         plt.show()
 
     if any(GEO_PLOT.get_values_multilevel_dict(dict(cfg.job))):

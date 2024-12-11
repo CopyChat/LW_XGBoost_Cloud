@@ -75,7 +75,7 @@ def prepare_data(train_valid_rate=0.1):
     return X_train, y_train, X_valid, y_valid,  X_test, y_test, X_train_scaled, X_valid_scaled, X_test_scaled, evalSet
 
 
-def calculate_statistics_y_pred_y_test(df):
+def calculate_statistics_y_pred_y_test(df, print_out=False):
     """
     default columns names are 'CF', 'CF_pred'
     :param df:
@@ -115,10 +115,11 @@ def calculate_statistics_y_pred_y_test(df):
         'R_squared': r_squared,
     }
 
+    if print_out:
     # Print the results with 2.2f format, aligned
-    print("\nStatistics:")
-    for key, value in output.items():
-        print(f"{key:<20}: {value:6.2f}")
+        print("\nStatistics:")
+        for key, value in output.items():
+            print(f"{key:<20}: {value:6.2f}")
 
     return output
 
