@@ -23,12 +23,12 @@ def split(data, tst_sz):
     y = data["CF"]
     X = data.drop("CF" , axis=1)
     # X = X.drop("timestamp" , axis=1)
-    X_train, X_test, y_train, y_test = train_test_split(X,y, test_size=tst_sz, random_state=7)
+    X_train, X_test, y_train, y_test = train_test_split(X,y, test_size=tst_sz, random_state=7, shuffle=True)
     return X_train, X_test, y_train, y_test
 
 # Global data:
 # Global constant definition (naming in uppercase)
-def prepare_data(train_valid_rate=0.1):
+def prepare_data(train_valid_rate=0.1, with_time=False):
     """
     get data ready for ML models
     :return:
@@ -39,10 +39,16 @@ def prepare_data(train_valid_rate=0.1):
     df_raw = GEO_PLOT.read_csv_into_df_with_header(data_set_name)
 
     # ----------------------------  split data:
+    if with_time:
+        # Add 'dayofyear' and 'hourofday' periodic sine values
+        df_raw['dayofyear'] = np.sin(2 * np.pi * df_raw.index.dayofyear / 365.0)
+        df_raw['hourofday'] = np.sin(2 * np.pi * df_raw.index.hour / 24.0)
+
+    # ----------------------------  split data:
     # works on two-year data:
     # for training (SearchGrid and CV) and valid
     train_valid = df_raw['2019-09-13':'2021-09-12']
-    X_train, X_valid, y_train, y_valid = split(train_valid, 0.1)
+    X_train, X_valid, y_train, y_valid = split(train_valid, 0.1,)
 
     # valid set do not directly participate in the training, but only for monitoring and validation and early_stop.
 
