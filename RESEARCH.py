@@ -19,16 +19,16 @@ import GEO_PLOT
 
 from sklearn.model_selection import train_test_split
 
-def split(data, tst_sz):
+def split(data, tst_sz, shuffle=True):
     y = data["CF"]
     X = data.drop("CF" , axis=1)
     # X = X.drop("timestamp" , axis=1)
-    X_train, X_test, y_train, y_test = train_test_split(X,y, test_size=tst_sz, random_state=7, shuffle=True)
+    X_train, X_test, y_train, y_test = train_test_split(X,y, test_size=tst_sz, random_state=7, shuffle=shuffle)
     return X_train, X_test, y_train, y_test
 
 # Global data:
 # Global constant definition (naming in uppercase)
-def prepare_data(train_valid_rate=0.1, with_time=False):
+def prepare_data(train_valid_rate=0.1, with_time=False, shuffle=True):
     """
     get data ready for ML models
     :return:
@@ -48,7 +48,7 @@ def prepare_data(train_valid_rate=0.1, with_time=False):
     # works on two-year data:
     # for training (SearchGrid and CV) and valid
     train_valid = df_raw['2019-09-13':'2021-09-12']
-    X_train, X_valid, y_train, y_valid = split(train_valid, 0.1,)
+    X_train, X_valid, y_train, y_valid = split(train_valid, train_valid_rate, shuffle=shuffle)
 
     # valid set do not directly participate in the training, but only for monitoring and validation and early_stop.
 
@@ -78,7 +78,7 @@ def prepare_data(train_valid_rate=0.1, with_time=False):
 
     evalSet = [(X_train, y_train), (X_valid, y_valid)]
 
-    return X_train, y_train, X_valid, y_valid,  X_test, y_test, X_train_scaled, X_valid_scaled, X_test_scaled, evalSet
+    return X_train, y_train, X_valid, y_valid,  X_test, y_test, X_train_scaled, X_valid_scaled, X_test_scaled, evalSet, df_raw
 
 
 def calculate_statistics_y_pred_y_test(df, print_out=False):
