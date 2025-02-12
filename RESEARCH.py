@@ -19,6 +19,59 @@ import GEO_PLOT
 
 from sklearn.model_selection import train_test_split
 
+
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+
+def get_mean_by_interval(df, interval='10min', min_point_inside_interval=5):
+    """
+    Resample a DataFrame to a specified time interval and calculate the mean value for each interval.
+    :param df: DataFrame with a datetime index
+    :param min_point_inside_interval: minimum number of points inside the interval
+    :param interval: Time interval for resampling (default is 10 minutes)
+    :return: DataFrame with mean values for each interval
+    """
+    # Resample to 10-minute intervals with right label (ending at 0, 10, 20, etc.)
+    resampled_df = df.resample(interval, label='right', closed='right').mean()
+
+    # Count number of available rows in each 10-minute interval
+    counts = df.resample(interval, label='right', closed='right').count()
+
+    # Identify intervals with less than 5 data points
+    insufficient_data_intervals = counts[counts.iloc[:, 0] < min_point_inside_interval].index
+
+    # Remove intervals with less than 5 data points
+    cleaned_df = resampled_df.drop(insufficient_data_intervals)
+
+    # Print missing times
+    # print("Missing time intervals with insufficient data:")
+    # for missing_time in insufficient_data_intervals:
+        # print(missing_time)
+
+    # Count total number of missing intervals
+    missing_count = len(insufficient_data_intervals)
+    print(f"\nTotal number of missing 10-minute intervals: {missing_count}")
+
+    # Create a histogram of missing intervals
+    missing_hours = [ts.hour for ts in insufficient_data_intervals]
+    missing_minutes = [ts.minute for ts in insufficient_data_intervals]
+    
+    # Combine hours and 10-minute intervals for histogram bins
+    missing_bins = [h * 6 + (m // 10) for h, m in zip(missing_hours, missing_minutes)]
+    
+    plt.figure(figsize=(12, 6))
+    plt.hist(missing_bins, bins=range(0, 24 * 6 + 1), edgecolor='black', align='left')
+    plt.xticks(ticks=range(0, 24 * 6, 6), labels=[f"{h}:00" for h in range(24)], rotation=45)
+    plt.xlabel('Time of Day')
+    plt.ylabel('Number of Missing 10-Minute Intervals')
+    plt.title('Histogram of Missing 10-Minute Intervals Throughout the Day')
+    plt.tight_layout()
+    plt.show()
+
+    return cleaned_df
+
+
 def split(data, tst_sz, shuffle=True):
     y = data["CF"]
     X = data.drop("CF" , axis=1)
