@@ -81,15 +81,17 @@ def split(data, tst_sz, shuffle=True):
 
 # Global data:
 # Global constant definition (naming in uppercase)
-def prepare_data(train_valid_rate=0.1, with_time=False, shuffle=True):
+def prepare_data(df_raw=None, train_valid_rate=0.1, with_time=False, shuffle=True):
     """
     get data ready for ML models
     :return:
     """
-    # ============================= read data ===========================
-    path = f'/Users/ctang/Microsoft_OneDrive/OneDrive/CODE/LW_XGBoost_Cloud'
-    data_set_name = f'{path}/dataset/raw.bsrn_lacy.2019_2022.5min.local_time.csv'
-    df_raw = GEO_PLOT.read_csv_into_df_with_header(data_set_name)
+    if df_raw is None:
+        # use default data 5 minute
+        # ============================= read data ===========================
+        path = f'/Users/ctang/Microsoft_OneDrive/OneDrive/CODE/LW_XGBoost_Cloud'
+        data_set_name = f'{path}/dataset/raw.bsrn_lacy.2019_2022.5min.local_time.csv'
+        df_raw = GEO_PLOT.read_csv_into_df_with_header(data_set_name)
 
     # ----------------------------  split data:
     if with_time:
